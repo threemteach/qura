@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Secure checkout for Cura Care.">
+  <title>Checkout | Cura Care</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/checkout.css">
+</head>
+<body class="checkout-page">
+  <header class="checkout-header">
+    <div class="container">
+      <a class="brand" href="index.html"><img src="assets/images/cura-care-logo.png" alt=""><span>CURA CARE<small>HIDDEN INSIDE</small></span></a>
+      <span>Secure checkout</span>
+      <a href="index.html">← Continue shopping</a>
+    </div>
+  </header>
+  <main class="checkout-layout container">
+    <form class="checkout-form" data-checkout-form novalidate>
+      <div class="checkout-title"><p class="eyebrow">ALMOST YOURS</p><h1>Checkout</h1><p>Complete your details and choose how you’d like to pay.</p></div>
+      <section class="form-card">
+        <div class="step-title"><span>1</span><div><h2>Contact details</h2><p>We’ll use these details to confirm your order.</p></div></div>
+        <div class="form-grid">
+          <label class="full">Full name<input name="name" autocomplete="name" required><small></small></label>
+          <label>Phone number<input name="phone" inputmode="tel" placeholder="01xxxxxxxxx" required><small></small></label>
+          <label>Email address<input name="email" type="email" autocomplete="email" required><small></small></label>
+        </div>
+      </section>
+      <section class="form-card">
+        <div class="step-title"><span>2</span><div><h2>Delivery address</h2><p>Available for delivery across Egypt.</p></div></div>
+        <div class="form-grid">
+          <label class="full">Street address<input name="address" autocomplete="street-address" required><small></small></label>
+          <label>City<select name="city" required><option value="">Choose city</option><option>Cairo</option><option>Giza</option><option>Alexandria</option><option>Mansoura</option><option>Tanta</option><option>Other</option></select><small></small></label>
+          <label>Area<input name="area" required><small></small></label>
+          <label class="full">Delivery notes <span>(optional)</span><textarea name="notes" rows="3" placeholder="Building, floor, landmark…"></textarea></label>
+        </div>
+      </section>
+      <section class="form-card">
+        <div class="step-title"><span>3</span><div><h2>Payment method</h2><p>Choose the most convenient option.</p></div></div>
+        <div class="payment-options">
+          <label><input type="radio" name="payment" value="instapay" required><span><b>InstaPay</b><small>Upload your transfer screenshot</small></span><i>›</i></label>
+          <label><input type="radio" name="payment" value="vodafone"><span><b>Vodafone Cash</b><small>Upload your transfer screenshot</small></span><i>›</i></label>
+          <label><input type="radio" name="payment" value="cod"><span><b>Cash on delivery</b><small>Pay when your order arrives</small></span><i>›</i></label>
+        </div>
+        <small class="payment-error" data-payment-error></small>
+        <div class="payment-proof" data-payment-proof hidden>
+          <div><b data-payment-instruction>Transfer your total, then upload a screenshot.</b><span>Payment account: 01XX XXX XXXX</span></div>
+          <label class="upload-box" for="proof-upload"><span>⇧</span><b>Upload payment screenshot</b><small>PNG or JPG, up to 5 MB</small></label>
+          <input id="proof-upload" type="file" accept="image/png,image/jpeg" hidden>
+          <div class="proof-preview" data-proof-preview hidden><img alt="Payment screenshot preview"><div><b>Payment proof added</b><button type="button" data-remove-proof>Remove</button></div></div>
+          <small class="proof-error" data-proof-error></small>
+        </div>
+        <div class="cod-note" data-cod-note hidden><span>✓</span><p><b>Pay at your door</b><small>Please prepare the exact amount when possible.</small></p></div>
+      </section>
+      <button class="button button-primary place-order" type="submit">Place order</button>
+      <p class="secure-note">🔒 Your information is used only to process this order.</p>
+    </form>
+    <aside class="order-summary">
+      <h2>Your order</h2>
+      <div data-checkout-items></div>
+      <div class="summary-lines"><p><span>Subtotal</span><b data-summary-subtotal>EGP 0</b></p><p><span>Delivery</span><b>EGP 65</b></p><p class="summary-total"><span>Total</span><b data-summary-total>EGP 65</b></p></div>
+      <p class="summary-empty" data-summary-empty hidden>Your bag is empty. <a href="index.html">Start shopping</a></p>
+    </aside>
+  </main>
+  <footer class="checkout-footer"><div class="container">© 2026 Cura Care <span>Designed & built by <a href="https://3mtechs.com" target="_blank" rel="noopener">3M Tech ↗</a></span></div></footer>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/checkout.js"></script>
+</body>
+</html>

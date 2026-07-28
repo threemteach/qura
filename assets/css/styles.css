@@ -210,6 +210,11 @@ footer { padding-top: 64px; background: #24172a; color: #f9f3f8; }
 .toast { position: fixed; z-index: 80; left: 50%; bottom: 28px; padding: 11px 18px; border-radius: 10px; background: var(--purple-dark); color: white; opacity: 0; transform: translate(-50%, 15px); pointer-events: none; transition: .2s; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 :focus-visible { outline: 3px solid rgba(207,108,156,.45); outline-offset: 3px; }
+@media (min-width: 992px) and (max-width: 1199px) {
+  .header-row { gap: 12px; }
+  .desktop-nav { gap: 12px; font-size: 11px; }
+  .header-search { width: 155px; }
+}
 @media (max-width: 991px) {
   .desktop-nav { display: none; }
   .menu-button { display: block; }
