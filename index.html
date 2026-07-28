@@ -17,12 +17,16 @@
         <span>CURA CARE<small>HIDDEN INSIDE</small></span>
       </a>
       <nav class="desktop-nav" aria-label="Main navigation">
-        <a href="#categories">Categories</a>
+        <a href="#products">Categories</a>
         <a href="#products">Best sellers</a>
         <a href="#about">About us</a>
       </nav>
       <div class="header-actions">
-        <button class="icon-button search-button" type="button" aria-label="Search">⌕</button>
+        <form class="header-search" data-header-search role="search">
+          <label class="sr-only" for="header-product-search">Search products</label>
+          <input id="header-product-search" type="search" placeholder="Search products…" autocomplete="off">
+          <button type="submit" aria-label="Search">⌕</button>
+        </form>
         <button class="icon-button cart-button" type="button" aria-label="Open cart">Bag <b data-cart-count>0</b></button>
       </div>
     </div>
@@ -30,7 +34,7 @@
 
   <div class="drawer" aria-hidden="true">
     <button class="drawer-close" type="button" aria-label="Close menu">×</button>
-    <a href="#categories">Categories</a>
+    <a href="#products">Categories</a>
     <a href="#products">Best sellers</a>
     <a href="#about">About us</a>
   </div>
@@ -44,7 +48,7 @@
         <p>Simple, thoughtful essentials for skin, hair, body, baby and every part of your daily care ritual.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#products">Shop best sellers</a>
-          <a class="button button-secondary" href="#categories">Explore categories</a>
+          <a class="button button-secondary" href="#products">Explore categories</a>
         </div>
         <div class="hero-notes"><span>✓ Original products</span><span>✓ Carefully selected</span></div>
       </div>
@@ -58,12 +62,21 @@
       </div>
     </section>
 
-    <section class="section container" id="categories">
-      <div class="section-heading">
-        <div><p class="eyebrow">SHOP YOUR ROUTINE</p><h2>All categories</h2></div>
-        <p>Everything you need, arranged simply.</p>
+    <section class="quick-shelves container" aria-label="Featured product collections">
+      <div class="product-shelf">
+        <div class="shelf-heading">
+          <div><span>01</span><p>Most loved</p><h2>Best sellers</h2></div>
+          <button type="button" data-shelf-view="bestseller">Shop all →</button>
+        </div>
+        <div class="shelf-track" data-bestseller-shelf></div>
       </div>
-      <div class="category-grid" data-category-grid></div>
+      <div class="product-shelf offer-shelf">
+        <div class="shelf-heading">
+          <div><span>02</span><p>Limited time</p><h2>Offers</h2></div>
+          <button type="button" data-shelf-view="offers">See offers →</button>
+        </div>
+        <div class="shelf-track" data-offer-shelf></div>
+      </div>
     </section>
 
     <section class="feature-strip">
@@ -82,6 +95,11 @@
       <div class="catalog">
         <aside class="catalog-sidebar" aria-label="Main product categories">
           <div class="filter-heading"><span>Categories</span><button type="button" data-clear-filters>Clear</button></div>
+          <div class="category-search">
+            <label class="sr-only" for="catalog-search">Search by product name</label>
+            <span aria-hidden="true">⌕</span>
+            <input id="catalog-search" type="search" data-product-search placeholder="Search product name…" autocomplete="off">
+          </div>
           <div class="main-filters" data-main-filters></div>
         </aside>
         <div class="catalog-content">
@@ -114,7 +132,7 @@
         <p class="eyebrow">CURA CARE</p>
         <h2>Hidden inside,<br>revealed with care.</h2>
         <p>We believe care should feel uncomplicated. One trusted place for the essentials that make your routine feel complete.</p>
-        <a class="button button-primary" href="#categories">Find your routine</a>
+        <a class="button button-primary" href="#products">Find your routine</a>
       </div>
       <img src="assets/images/cura-care-logo.png" alt="Cura Care brand mark">
     </section>
@@ -138,11 +156,14 @@
         <div class="footer-logo"><img src="assets/images/cura-care-logo.png" alt="Cura Care logo"><span>CURA CARE<small>HIDDEN INSIDE</small></span></div>
         <p>Carefully selected beauty and personal care essentials.</p>
       </div>
-      <div><b>Shop</b><a href="#categories">Categories</a><a href="#products">Best sellers</a><a href="#products">New arrivals</a></div>
+      <div><b>Shop</b><a href="#products">Categories</a><a href="#products">Best sellers</a><a href="#products">New arrivals</a></div>
       <div><b>Help</b><a href="#">Delivery</a><a href="#">Returns</a><a href="#">Contact us</a></div>
       <div><b>Follow</b><a href="#">Instagram</a><a href="#">Facebook</a><a href="#">WhatsApp</a></div>
     </div>
-    <div class="container copyright">© 2026 Cura Care. Hidden Inside.</div>
+    <div class="container copyright">
+      <span>© 2026 Cura Care. All rights reserved.</span>
+      <span>Designed & built by <a href="https://3mtechs.com" target="_blank" rel="noopener">3M Tech ↗</a></span>
+    </div>
   </footer>
   <script src="assets/js/data.js"></script>
   <script src="assets/js/app.js"></script>

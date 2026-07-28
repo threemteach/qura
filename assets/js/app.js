@@ -6,14 +6,7 @@
   let activeFilter = "all";
   let activeSubFilter = "all";
   let activeSort = "featured";
-
-  const categoryGrid = $("[data-category-grid]");
-  categoryGrid.innerHTML = data.categories.map((category, index) => `
-    <button class="category-card" data-category="${category.id}" style="--delay:${index * 20}ms">
-      <span class="category-icon" aria-hidden="true">${category.icon}</span>
-      <span><b>${category.name}</b><small>${category.subtitle}</small></span>
-      <i aria-hidden="true">→</i>
-    </button>`).join("");
+  let searchQuery = "";
 
   function renderMainFilters() {
     const filters = [{ id: "all", name: "All products", icon: "✦" }, ...data.categories];
@@ -56,14 +49,32 @@
     </article>`;
   }
 
+  function shelfCard(product) {
+    return `<article class="shelf-card">
+      <div class="shelf-image"><img src="${product.image}" alt="${product.name}" loading="lazy">${product.badge ? `<span>${product.badge}</span>` : ""}</div>
+      <div><small>${product.brand}</small><h3>${product.name}</h3><p><b>${money(product.price)}</b>${product.oldPrice ? `<s>${money(product.oldPrice)}</s>` : ""}</p></div>
+      <button class="shelf-add" data-add="${product.id}" type="button" aria-label="Add ${product.name} to bag">+</button>
+    </article>`;
+  }
+
+  function renderShelves() {
+    const bestsellers = data.products.filter(product => ["BESTSELLER", "LOVED", "SUMMER PICK", "ROUTINE"].includes(product.badge)).slice(0, 5);
+    const offers = data.products.filter(product => product.oldPrice).slice(0, 5);
+    $("[data-bestseller-shelf]").innerHTML = bestsellers.map(shelfCard).join("");
+    $("[data-offer-shelf]").innerHTML = offers.map(shelfCard).join("");
+  }
+
   function renderProducts() {
     let list = activeFilter === "all" ? [...data.products] : data.products.filter(p => p.category === activeFilter);
     if (activeSubFilter !== "all") list = list.filter(product => product.subcategory === activeSubFilter);
+    if (searchQuery) {
+      list = list.filter(product => `${product.name} ${product.brand} ${product.subcategory}`.toLowerCase().includes(searchQuery));
+    }
     if (activeSort === "price-low") list.sort((a, b) => a.price - b.price);
     if (activeSort === "price-high") list.sort((a, b) => b.price - a.price);
     if (activeSort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
     const category = data.categories.find(item => item.id === activeFilter);
-    const path = activeFilter === "all" ? "All products" : `${category.name}${activeSubFilter !== "all" ? ` / ${activeSubFilter}` : ""}`;
+    const path = searchQuery ? `Results for “${searchQuery}”` : activeFilter === "all" ? "All products" : `${category.name}${activeSubFilter !== "all" ? ` / ${activeSubFilter}` : ""}`;
     $("[data-active-path]").textContent = path;
     $("[data-result-count]").textContent = `${list.length} ${list.length === 1 ? "product" : "products"}`;
     $("[data-product-grid]").innerHTML = list.map(productCard).join("");
@@ -75,6 +86,13 @@
     activeSubFilter = "all";
     renderMainFilters();
     renderSubFilters();
+    renderProducts();
+  }
+
+  function applySearch(value) {
+    searchQuery = value.trim().toLowerCase();
+    const catalogInput = $("[data-product-search]");
+    if (catalogInput.value !== value) catalogInput.value = value;
     renderProducts();
   }
 
@@ -110,6 +128,7 @@
     const subFilter = event.target.closest("[data-sub-filter]");
     const add = event.target.closest("[data-add]");
     const remove = event.target.closest("[data-remove]");
+    const shelfView = event.target.closest("[data-shelf-view]");
     if (category) {
       applyFilter(category.dataset.category);
       $("#products").scrollIntoView({ behavior: "smooth" });
@@ -121,6 +140,23 @@
       activeSubFilter = subFilter.dataset.subFilter;
       document.querySelectorAll("[data-sub-filter]").forEach(chip => chip.classList.toggle("active", chip === subFilter));
       renderProducts();
+    }
+    if (shelfView) {
+      searchQuery = "";
+      $("[data-product-search]").value = "";
+      if (shelfView.dataset.shelfView === "offers") {
+        activeFilter = "all";
+        activeSubFilter = "all";
+        activeSort = "featured";
+        renderMainFilters(); renderSubFilters();
+        const offerProducts = data.products.filter(product => product.oldPrice);
+        $("[data-active-path]").textContent = "Current offers";
+        $("[data-result-count]").textContent = `${offerProducts.length} products`;
+        $("[data-product-grid]").innerHTML = offerProducts.map(productCard).join("");
+      } else {
+        applyFilter("all");
+      }
+      $("#products").scrollIntoView({ behavior: "smooth" });
     }
     if (add) {
       const id = Number(add.dataset.add);
@@ -152,11 +188,23 @@
     activeSort = event.target.value;
     renderProducts();
   });
-  $("[data-clear-filters]").addEventListener("click", () => applyFilter("all"));
+  $("[data-product-search]").addEventListener("input", event => applySearch(event.target.value));
+  $("[data-header-search]").addEventListener("submit", event => {
+    event.preventDefault();
+    applySearch($("#header-product-search").value);
+    $("#products").scrollIntoView({ behavior: "smooth" });
+  });
+  $("[data-clear-filters]").addEventListener("click", () => {
+    searchQuery = "";
+    $("[data-product-search]").value = "";
+    $("#header-product-search").value = "";
+    applyFilter("all");
+  });
   $("[data-show-all]").addEventListener("click", () => document.querySelector('[data-filter="all"]').click());
   $("[data-newsletter]").addEventListener("submit", event => { event.preventDefault(); event.target.reset(); toast("Welcome to Cura Care"); });
   renderMainFilters();
   renderSubFilters();
+  renderShelves();
   renderProducts();
   saveCart();
 })();
