@@ -94,6 +94,7 @@
     renderProducts();
     $(".catalog-sidebar").classList.remove("mobile-open");
     $("[data-mobile-filter-toggle]").setAttribute("aria-expanded", "false");
+    document.body.classList.remove("filter-open");
   }
 
   function applySearch(value) {
@@ -210,6 +211,12 @@
       const sidebar = $(".catalog-sidebar");
       const open = sidebar.classList.toggle("mobile-open");
       $("[data-mobile-filter-toggle]").setAttribute("aria-expanded", String(open));
+      document.body.classList.toggle("filter-open", open);
+    }
+    if (event.target.closest("[data-mobile-filter-close]") || event.target.closest("[data-filter-backdrop]")) {
+      $(".catalog-sidebar").classList.remove("mobile-open");
+      $("[data-mobile-filter-toggle]").setAttribute("aria-expanded", "false");
+      document.body.classList.remove("filter-open");
     }
   });
 
@@ -218,7 +225,12 @@
       event.preventDefault();
       event.target.click();
     }
-    if (event.key === "Escape") { showLayer("menu", false); showLayer("cart", false); }
+    if (event.key === "Escape") {
+      showLayer("menu", false); showLayer("cart", false);
+      $(".catalog-sidebar").classList.remove("mobile-open");
+      $("[data-mobile-filter-toggle]").setAttribute("aria-expanded", "false");
+      document.body.classList.remove("filter-open");
+    }
   });
   $("[data-sort]").addEventListener("change", event => {
     activeSort = event.target.value;

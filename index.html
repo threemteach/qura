@@ -108,7 +108,10 @@
           <em aria-hidden="true">⌄</em>
         </button>
         <aside class="catalog-sidebar" aria-label="Main product categories">
-          <div class="filter-heading"><span>Categories</span><button type="button" data-clear-filters>Clear</button></div>
+          <div class="filter-heading">
+            <span>Filter products</span>
+            <div><button type="button" data-clear-filters>Clear all</button><button class="mobile-filter-close" type="button" data-mobile-filter-close aria-label="Close filters">×</button></div>
+          </div>
           <div class="category-search">
             <label class="sr-only" for="catalog-search">Search by product name</label>
             <span aria-hidden="true">⌕</span>
@@ -116,6 +119,7 @@
           </div>
           <div class="main-filters" data-main-filters></div>
         </aside>
+        <button class="filter-backdrop" type="button" data-filter-backdrop aria-label="Close filters"></button>
         <div class="catalog-content">
           <div class="catalog-toolbar">
             <div>
