@@ -4,6 +4,8 @@
   const $ = selector => document.querySelector(selector);
   const cart = JSON.parse(localStorage.getItem("curaCart") || "[]");
   let activeFilter = "all";
+  let activeSubFilter = "all";
+  let activeSort = "featured";
 
   const categoryGrid = $("[data-category-grid]");
   categoryGrid.innerHTML = data.categories.map((category, index) => `
@@ -13,8 +15,31 @@
       <i aria-hidden="true">→</i>
     </button>`).join("");
 
-  const chips = [{ id: "all", name: "All" }, ...data.categories];
-  $("[data-filter-chips]").innerHTML = chips.map(c => `<button class="chip${c.id === "all" ? " active" : ""}" data-filter="${c.id}">${c.name}</button>`).join("");
+  function renderMainFilters() {
+    const filters = [{ id: "all", name: "All products", icon: "✦" }, ...data.categories];
+    $("[data-main-filters]").innerHTML = filters.map(category => {
+      const count = category.id === "all" ? data.products.length : data.products.filter(product => product.category === category.id).length;
+      return `<button class="main-filter${category.id === activeFilter ? " active" : ""}" data-filter="${category.id}">
+        <span aria-hidden="true">${category.icon}</span><b>${category.name}</b><small>${count}</small>
+      </button>`;
+    }).join("");
+  }
+
+  function renderSubFilters() {
+    const category = data.categories.find(item => item.id === activeFilter);
+    const wrap = $("[data-sub-filter-wrap]");
+    if (!category) {
+      wrap.hidden = true;
+      $("[data-sub-filters]").innerHTML = "";
+      return;
+    }
+    wrap.hidden = false;
+    const subs = ["all", ...category.subs];
+    $("[data-sub-filters]").innerHTML = subs.map(sub => {
+      const label = sub === "all" ? `All ${category.name}` : sub;
+      return `<button class="chip${sub === activeSubFilter ? " active" : ""}" data-sub-filter="${sub}">${label}</button>`;
+    }).join("");
+  }
 
   function productCard(product) {
     return `<article class="product-card">
@@ -32,9 +57,25 @@
   }
 
   function renderProducts() {
-    const list = activeFilter === "all" ? data.products : data.products.filter(p => p.category === activeFilter);
+    let list = activeFilter === "all" ? [...data.products] : data.products.filter(p => p.category === activeFilter);
+    if (activeSubFilter !== "all") list = list.filter(product => product.subcategory === activeSubFilter);
+    if (activeSort === "price-low") list.sort((a, b) => a.price - b.price);
+    if (activeSort === "price-high") list.sort((a, b) => b.price - a.price);
+    if (activeSort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    const category = data.categories.find(item => item.id === activeFilter);
+    const path = activeFilter === "all" ? "All products" : `${category.name}${activeSubFilter !== "all" ? ` / ${activeSubFilter}` : ""}`;
+    $("[data-active-path]").textContent = path;
+    $("[data-result-count]").textContent = `${list.length} ${list.length === 1 ? "product" : "products"}`;
     $("[data-product-grid]").innerHTML = list.map(productCard).join("");
     $("[data-empty]").hidden = list.length > 0;
+  }
+
+  function applyFilter(categoryId) {
+    activeFilter = categoryId;
+    activeSubFilter = "all";
+    renderMainFilters();
+    renderSubFilters();
+    renderProducts();
   }
 
   function saveCart() {
@@ -66,16 +107,19 @@
   document.addEventListener("click", event => {
     const category = event.target.closest("[data-category]");
     const filter = event.target.closest("[data-filter]");
+    const subFilter = event.target.closest("[data-sub-filter]");
     const add = event.target.closest("[data-add]");
     const remove = event.target.closest("[data-remove]");
     if (category) {
-      activeFilter = category.dataset.category;
-      document.querySelector(`[data-filter="${activeFilter}"]`)?.click();
+      applyFilter(category.dataset.category);
       $("#products").scrollIntoView({ behavior: "smooth" });
     }
     if (filter) {
-      activeFilter = filter.dataset.filter;
-      document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c === filter));
+      applyFilter(filter.dataset.filter);
+    }
+    if (subFilter) {
+      activeSubFilter = subFilter.dataset.subFilter;
+      document.querySelectorAll("[data-sub-filter]").forEach(chip => chip.classList.toggle("active", chip === subFilter));
       renderProducts();
     }
     if (add) {
@@ -104,8 +148,15 @@
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") { showLayer("menu", false); showLayer("cart", false); }
   });
+  $("[data-sort]").addEventListener("change", event => {
+    activeSort = event.target.value;
+    renderProducts();
+  });
+  $("[data-clear-filters]").addEventListener("click", () => applyFilter("all"));
   $("[data-show-all]").addEventListener("click", () => document.querySelector('[data-filter="all"]').click());
   $("[data-newsletter]").addEventListener("submit", event => { event.preventDefault(); event.target.reset(); toast("Welcome to Cura Care"); });
+  renderMainFilters();
+  renderSubFilters();
   renderProducts();
   saveCart();
 })();

@@ -49,7 +49,12 @@
         <div class="hero-notes"><span>✓ Original products</span><span>✓ Carefully selected</span></div>
       </div>
       <div class="hero-visual">
-        <img src="assets/images/cura-care-logo.png" alt="Cura Care lotus logo">
+        <img class="hero-photo" src="assets/images/summer-sunscreen.jpg" alt="Woman applying sunscreen on a bright summer beach">
+        <div class="hero-brand-mark">
+          <img src="assets/images/cura-care-logo.png" alt="">
+          <span>CURA CARE<small>HIDDEN INSIDE</small></span>
+        </div>
+        <div class="sun-note"><b>SPF every day</b><span>Summer skin starts with protection</span></div>
       </div>
     </section>
 
@@ -71,12 +76,37 @@
 
     <section class="section container" id="products">
       <div class="section-heading">
-        <div><p class="eyebrow">LOVED ESSENTIALS</p><h2>Best sellers</h2></div>
+        <div><p class="eyebrow">SHOP CURA CARE</p><h2>Find your essentials</h2></div>
         <button class="text-button" type="button" data-show-all>View all products →</button>
       </div>
-      <div class="chips" data-filter-chips aria-label="Product filters"></div>
-      <div class="product-grid" data-product-grid></div>
-      <p class="empty-state" data-empty hidden>No products found in this category yet.</p>
+      <div class="catalog">
+        <aside class="catalog-sidebar" aria-label="Main product categories">
+          <div class="filter-heading"><span>Categories</span><button type="button" data-clear-filters>Clear</button></div>
+          <div class="main-filters" data-main-filters></div>
+        </aside>
+        <div class="catalog-content">
+          <div class="catalog-toolbar">
+            <div>
+              <span class="active-path" data-active-path>All products</span>
+              <small data-result-count></small>
+            </div>
+            <label>Sort
+              <select data-sort>
+                <option value="featured">Featured</option>
+                <option value="price-low">Price: low to high</option>
+                <option value="price-high">Price: high to low</option>
+                <option value="name">Name: A–Z</option>
+              </select>
+            </label>
+          </div>
+          <div class="sub-filter-wrap" data-sub-filter-wrap hidden>
+            <span>Choose a type</span>
+            <div class="chips" data-sub-filters aria-label="Product subcategory filters"></div>
+          </div>
+          <div class="product-grid" data-product-grid></div>
+          <p class="empty-state" data-empty hidden>No products found in this category yet.</p>
+        </div>
+      </div>
     </section>
 
     <section class="banner container" id="about">
@@ -104,7 +134,10 @@
 
   <footer>
     <div class="container footer-grid">
-      <div class="footer-brand"><span>CURA CARE</span><p>Carefully selected beauty and personal care essentials.</p></div>
+      <div class="footer-brand">
+        <div class="footer-logo"><img src="assets/images/cura-care-logo.png" alt="Cura Care logo"><span>CURA CARE<small>HIDDEN INSIDE</small></span></div>
+        <p>Carefully selected beauty and personal care essentials.</p>
+      </div>
       <div><b>Shop</b><a href="#categories">Categories</a><a href="#products">Best sellers</a><a href="#products">New arrivals</a></div>
       <div><b>Help</b><a href="#">Delivery</a><a href="#">Returns</a><a href="#">Contact us</a></div>
       <div><b>Follow</b><a href="#">Instagram</a><a href="#">Facebook</a><a href="#">WhatsApp</a></div>
