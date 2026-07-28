@@ -15,6 +15,7 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+[id] { scroll-margin-top: 92px; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.55; }
 body.no-scroll { overflow: hidden; }
 button, input { font: inherit; }
@@ -187,6 +188,8 @@ footer { padding-top: 64px; background: #24172a; color: #f9f3f8; }
 .drawer.open, .cart-panel.open { transform: none; }
 .drawer { display: flex; flex-direction: column; gap: 12px; padding-top: 85px; }
 .drawer a { padding: 13px 0; border-bottom: 1px solid var(--border); font: 400 22px Georgia, serif; }
+.drawer .drawer-credit { margin-top: auto; border: 0; color: var(--purple); font: 700 15px var(--font); }
+.drawer-credit small { display: block; margin-bottom: 3px; color: var(--muted); font-size: 9px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
 .drawer-close { position: absolute; top: 22px; right: 22px; border: 0; background: transparent; font-size: 32px; cursor: pointer; }
 .overlay { position: fixed; z-index: 50; inset: 0; background: rgba(27,14,31,.38); }
 .cart-panel { display: flex; flex-direction: column; }

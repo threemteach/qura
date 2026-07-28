@@ -199,6 +199,7 @@
     if (event.target.closest(".menu-button")) showLayer("menu", true);
     if (event.target.closest(".cart-button")) showLayer("cart", true);
     if (event.target.closest(".drawer-close")) showLayer("menu", false);
+    if (event.target.closest(".drawer a")) showLayer("menu", false);
     if (event.target.closest(".cart-head button")) showLayer("cart", false);
     if (event.target === $(".overlay")) { showLayer("menu", false); showLayer("cart", false); }
     if (event.target.closest(".wish")) {
