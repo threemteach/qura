@@ -80,6 +80,7 @@
     const category = data.categories.find(item => item.id === activeFilter);
     const path = searchQuery ? `Results for “${searchQuery}”` : activeFilter === "all" ? "All products" : `${category.name}${activeSubFilter !== "all" ? ` / ${activeSubFilter}` : ""}`;
     $("[data-active-path]").textContent = path;
+    $("[data-mobile-filter-label]").textContent = path;
     $("[data-result-count]").textContent = `${list.length} ${list.length === 1 ? "product" : "products"}`;
     $("[data-product-grid]").innerHTML = list.map(productCard).join("");
     $("[data-empty]").hidden = list.length > 0;
@@ -91,6 +92,8 @@
     renderMainFilters();
     renderSubFilters();
     renderProducts();
+    $(".catalog-sidebar").classList.remove("mobile-open");
+    $("[data-mobile-filter-toggle]").setAttribute("aria-expanded", "false");
   }
 
   function applySearch(value) {
@@ -167,6 +170,7 @@
         renderMainFilters(); renderSubFilters();
         const offerProducts = data.products.filter(product => product.oldPrice);
         $("[data-active-path]").textContent = "Current offers";
+        $("[data-mobile-filter-label]").textContent = "Current offers";
         $("[data-result-count]").textContent = `${offerProducts.length} products`;
         $("[data-product-grid]").innerHTML = offerProducts.map(productCard).join("");
       } else {
@@ -175,6 +179,7 @@
         renderMainFilters(); renderSubFilters();
         const lovedProducts = data.products.filter(product => ["BESTSELLER", "LOVED", "SUMMER PICK", "ROUTINE"].includes(product.badge));
         $("[data-active-path]").textContent = "Best sellers";
+        $("[data-mobile-filter-label]").textContent = "Best sellers";
         $("[data-result-count]").textContent = `${lovedProducts.length} products`;
         $("[data-product-grid]").innerHTML = lovedProducts.map(productCard).join("");
       }
@@ -200,6 +205,11 @@
       button.classList.toggle("active");
       button.textContent = button.classList.contains("active") ? "♥" : "♡";
       toast(button.classList.contains("active") ? "Saved to wishlist" : "Removed from wishlist");
+    }
+    if (event.target.closest("[data-mobile-filter-toggle]")) {
+      const sidebar = $(".catalog-sidebar");
+      const open = sidebar.classList.toggle("mobile-open");
+      $("[data-mobile-filter-toggle]").setAttribute("aria-expanded", String(open));
     }
   });
 
