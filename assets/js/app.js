@@ -50,7 +50,7 @@
   }
 
   function shelfCard(product) {
-    return `<article class="shelf-card">
+    return `<article class="shelf-card" data-product-focus="${product.id}" tabindex="0" role="button" aria-label="View ${product.name}">
       <div class="shelf-image"><img src="${product.image}" alt="${product.name}" loading="lazy">${product.badge ? `<span>${product.badge}</span>` : ""}</div>
       <div><small>${product.brand}</small><h3>${product.name}</h3><p><b>${money(product.price)}</b>${product.oldPrice ? `<s>${money(product.oldPrice)}</s>` : ""}</p></div>
       <button class="shelf-add" data-add="${product.id}" type="button" aria-label="Add ${product.name} to bag">+</button>
@@ -60,8 +60,12 @@
   function renderShelves() {
     const bestsellers = data.products.filter(product => ["BESTSELLER", "LOVED", "SUMMER PICK", "ROUTINE"].includes(product.badge)).slice(0, 5);
     const offers = data.products.filter(product => product.oldPrice).slice(0, 5);
-    $("[data-bestseller-shelf]").innerHTML = bestsellers.map(shelfCard).join("");
-    $("[data-offer-shelf]").innerHTML = offers.map(shelfCard).join("");
+    const loop = products => {
+      const cards = products.map(shelfCard).join("");
+      return `<div class="shelf-loop"><div class="shelf-group">${cards}</div><div class="shelf-group" aria-hidden="true" inert>${cards}</div></div>`;
+    };
+    $("[data-bestseller-shelf]").innerHTML = loop(bestsellers);
+    $("[data-offer-shelf]").innerHTML = loop(offers);
   }
 
   function renderProducts() {
@@ -129,6 +133,8 @@
     const add = event.target.closest("[data-add]");
     const remove = event.target.closest("[data-remove]");
     const shelfView = event.target.closest("[data-shelf-view]");
+    const productFocus = event.target.closest("[data-product-focus]");
+    const shortcut = event.target.closest("[data-shortcut]");
     if (category) {
       applyFilter(category.dataset.category);
       $("#products").scrollIntoView({ behavior: "smooth" });
@@ -140,6 +146,16 @@
       activeSubFilter = subFilter.dataset.subFilter;
       document.querySelectorAll("[data-sub-filter]").forEach(chip => chip.classList.toggle("active", chip === subFilter));
       renderProducts();
+    }
+    if (shortcut) {
+      applyFilter(shortcut.dataset.shortcut);
+      $("#products").scrollIntoView({ behavior: "smooth" });
+    }
+    if (productFocus && !add) {
+      const product = data.products.find(item => item.id === Number(productFocus.dataset.productFocus));
+      applyFilter(product.category);
+      applySearch(product.name);
+      $("#products").scrollIntoView({ behavior: "smooth" });
     }
     if (shelfView) {
       searchQuery = "";
@@ -154,7 +170,13 @@
         $("[data-result-count]").textContent = `${offerProducts.length} products`;
         $("[data-product-grid]").innerHTML = offerProducts.map(productCard).join("");
       } else {
-        applyFilter("all");
+        activeFilter = "all";
+        activeSubFilter = "all";
+        renderMainFilters(); renderSubFilters();
+        const lovedProducts = data.products.filter(product => ["BESTSELLER", "LOVED", "SUMMER PICK", "ROUTINE"].includes(product.badge));
+        $("[data-active-path]").textContent = "Best sellers";
+        $("[data-result-count]").textContent = `${lovedProducts.length} products`;
+        $("[data-product-grid]").innerHTML = lovedProducts.map(productCard).join("");
       }
       $("#products").scrollIntoView({ behavior: "smooth" });
     }
@@ -182,6 +204,10 @@
   });
 
   document.addEventListener("keydown", event => {
+    if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-product-focus]")) {
+      event.preventDefault();
+      event.target.click();
+    }
     if (event.key === "Escape") { showLayer("menu", false); showLayer("cart", false); }
   });
   $("[data-sort]").addEventListener("change", event => {
