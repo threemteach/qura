@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Cura Care — carefully chosen beauty, baby care and personal care essentials.">
+  <title>Cura Care | Hidden Inside</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <div class="announcement">Free delivery on orders over EGP 1,500 <span>•</span> Easy payment with InstaPay & Vodafone Cash</div>
+  <header class="site-header">
+    <div class="container header-row">
+      <button class="icon-button menu-button" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+      <a class="brand" href="index.html" aria-label="Cura Care home">
+        <img src="assets/images/cura-care-logo.png" alt="">
+        <span>CURA CARE<small>HIDDEN INSIDE</small></span>
+      </a>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="#categories">Categories</a>
+        <a href="#products">Best sellers</a>
+        <a href="#about">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button search-button" type="button" aria-label="Search">⌕</button>
+        <button class="icon-button cart-button" type="button" aria-label="Open cart">Bag <b data-cart-count>0</b></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="drawer" aria-hidden="true">
+    <button class="drawer-close" type="button" aria-label="Close menu">×</button>
+    <a href="#categories">Categories</a>
+    <a href="#products">Best sellers</a>
+    <a href="#about">About us</a>
+  </div>
+  <div class="overlay" hidden></div>
+
+  <main>
+    <section class="hero container">
+      <div class="hero-copy">
+        <p class="eyebrow">CURATED CARE ESSENTIALS</p>
+        <h1>Care that feels<br>beautifully yours.</h1>
+        <p>Simple, thoughtful essentials for skin, hair, body, baby and every part of your daily care ritual.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#products">Shop best sellers</a>
+          <a class="button button-secondary" href="#categories">Explore categories</a>
+        </div>
+        <div class="hero-notes"><span>✓ Original products</span><span>✓ Carefully selected</span></div>
+      </div>
+      <div class="hero-visual">
+        <img src="assets/images/cura-care-logo.png" alt="Cura Care lotus logo">
+      </div>
+    </section>
+
+    <section class="section container" id="categories">
+      <div class="section-heading">
+        <div><p class="eyebrow">SHOP YOUR ROUTINE</p><h2>All categories</h2></div>
+        <p>Everything you need, arranged simply.</p>
+      </div>
+      <div class="category-grid" data-category-grid></div>
+    </section>
+
+    <section class="feature-strip">
+      <div class="container feature-grid">
+        <div><b>Carefully curated</b><span>Products selected for daily routines</span></div>
+        <div><b>Simple shopping</b><span>Clear categories and easy checkout</span></div>
+        <div><b>Made for you</b><span>Beauty and care in one calm place</span></div>
+      </div>
+    </section>
+
+    <section class="section container" id="products">
+      <div class="section-heading">
+        <div><p class="eyebrow">LOVED ESSENTIALS</p><h2>Best sellers</h2></div>
+        <button class="text-button" type="button" data-show-all>View all products →</button>
+      </div>
+      <div class="chips" data-filter-chips aria-label="Product filters"></div>
+      <div class="product-grid" data-product-grid></div>
+      <p class="empty-state" data-empty hidden>No products found in this category yet.</p>
+    </section>
+
+    <section class="banner container" id="about">
+      <div>
+        <p class="eyebrow">CURA CARE</p>
+        <h2>Hidden inside,<br>revealed with care.</h2>
+        <p>We believe care should feel uncomplicated. One trusted place for the essentials that make your routine feel complete.</p>
+        <a class="button button-primary" href="#categories">Find your routine</a>
+      </div>
+      <img src="assets/images/cura-care-logo.png" alt="Cura Care brand mark">
+    </section>
+
+    <section class="newsletter container">
+      <div><p class="eyebrow">STAY IN THE KNOW</p><h2>A little care in your inbox.</h2></div>
+      <form data-newsletter><label class="sr-only" for="email">Email address</label><input id="email" type="email" placeholder="Your email address" required><button class="button button-primary">Join us</button></form>
+    </section>
+  </main>
+
+  <aside class="cart-panel" aria-hidden="true" aria-label="Shopping cart">
+    <div class="cart-head"><h2>Your bag</h2><button type="button" aria-label="Close cart">×</button></div>
+    <div class="cart-items" data-cart-items></div>
+    <div class="cart-footer"><div><span>Subtotal</span><b data-cart-total>EGP 0</b></div><button class="button button-primary" type="button">Checkout</button></div>
+  </aside>
+  <div class="toast" role="status" aria-live="polite"></div>
+
+  <footer>
+    <div class="container footer-grid">
+      <div class="footer-brand"><span>CURA CARE</span><p>Carefully selected beauty and personal care essentials.</p></div>
+      <div><b>Shop</b><a href="#categories">Categories</a><a href="#products">Best sellers</a><a href="#products">New arrivals</a></div>
+      <div><b>Help</b><a href="#">Delivery</a><a href="#">Returns</a><a href="#">Contact us</a></div>
+      <div><b>Follow</b><a href="#">Instagram</a><a href="#">Facebook</a><a href="#">WhatsApp</a></div>
+    </div>
+    <div class="container copyright">© 2026 Cura Care. Hidden Inside.</div>
+  </footer>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
