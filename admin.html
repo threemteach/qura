@@ -26,7 +26,7 @@
   <div class="admin-app" data-admin-app hidden>
     <aside class="admin-sidebar">
       <a class="admin-brand" href="index.html"><img src="assets/images/cura-care-logo.png" alt=""><span>Cura Care<small>Admin</small></span></a>
-      <nav><button class="active" data-admin-tab="products">Products</button><button data-admin-tab="orders">Orders</button><button data-admin-tab="settings">Store settings</button></nav>
+      <nav><button class="active" data-admin-tab="products">Products</button><button data-admin-tab="catalog">Categories</button><button data-admin-tab="orders">Orders</button><button data-admin-tab="settings">Delivery & payment</button></nav>
       <button data-admin-logout>Sign out</button>
     </aside>
     <main class="admin-main">
@@ -38,6 +38,13 @@
         </div>
         <div class="admin-table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Flags</th><th>Sizes & prices</th><th>Status</th><th></th></tr></thead><tbody data-products-table></tbody></table></div>
       </section>
+      <section data-panel="catalog" hidden>
+        <div class="setup-grid">
+          <form class="settings-form" data-category-form><h2>Add category</h2><p class="form-help">Add it once, then it appears in every product.</p><label>Category name<input name="category_name" placeholder="Example: Skin care" required></label><button class="button button-primary">Add category</button></form>
+          <form class="settings-form" data-subcategory-form><h2>Add subcategory</h2><p class="form-help">Choose its main category first.</p><label>Main category<select name="parent_category" data-parent-category required></select></label><label>Subcategory name<input name="subcategory_name" placeholder="Example: Cleanser" required></label><button class="button button-primary">Add subcategory</button></form>
+        </div>
+        <div class="catalog-list" data-catalog-list></div>
+      </section>
       <section data-panel="orders" hidden><div class="admin-table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Payment</th><th>Total</th><th>Status</th></tr></thead><tbody data-orders-table></tbody></table></div></section>
       <section data-panel="settings" hidden>
         <form class="settings-form" data-settings-form>
@@ -45,6 +52,12 @@
           <div><label>InstaPay account name<input name="instapay_name"></label><label>InstaPay address / phone<input name="instapay_address"></label></div>
           <div><label>Vodafone Cash number<input name="vodafone_cash_number"></label><label>Payment note<textarea name="payment_note" rows="3"></textarea></label></div>
           <button class="button button-primary">Save settings</button>
+        </form>
+        <form class="settings-form delivery-form" data-delivery-form>
+          <h2>Delivery price by governorate</h2><p class="form-help">Choose a governorate and set its delivery fee. Any unlisted governorate uses the default fee above.</p>
+          <div><label>Governorate<select name="governorate" data-governorate-select required></select></label><label>Delivery fee<input name="fee" type="number" min="0" required></label></div>
+          <button class="button button-primary">Add / update price</button>
+          <div class="delivery-rates" data-delivery-rates></div>
         </form>
       </section>
     </main>
@@ -59,8 +72,8 @@
         <div class="admin-form-grid">
           <label class="wide">Product name<input name="name" required autocomplete="off"></label>
           <label>Brand<input name="brand" required></label>
-          <label>Category<select name="category" required><option value="">Choose category</option><option value="skin">Skin care</option><option value="hair">Hair care</option><option value="body">Body care</option><option value="smile">Smile care</option><option value="baby">Baby & kids</option><option value="pads">Pads & tools</option><option value="sun">Sunscreens</option><option value="deodorant">Deodorant</option><option value="acne">Acne routines</option><option value="lash">Lashes & brows</option><option value="lip">Lip care</option><option value="nail">Nail care</option></select></label>
-          <label>Subcategory<input name="subcategory"></label>
+          <label>Category<select name="category" data-product-category required></select></label>
+          <label>Subcategory<select name="subcategory" data-product-subcategory><option value="">Choose subcategory</option></select></label>
           <label class="wide">Image URL<input name="image_url" type="url" placeholder="https://..."></label>
           <label class="wide">Description<textarea name="description" rows="3"></textarea></label>
           <details class="wide"><summary>Advanced</summary><label>Product code (optional)<input name="slug" placeholder="Generated automatically"></label></details>

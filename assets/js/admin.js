@@ -1,4 +1,14 @@
 (() => {
+  const DEFAULT_CATEGORIES = [
+    { id: "skin", label: "Skin care", subcategories: [] }, { id: "hair", label: "Hair care", subcategories: [] },
+    { id: "body", label: "Body care", subcategories: [] }, { id: "smile", label: "Smile care", subcategories: [] },
+    { id: "baby", label: "Baby & kids", subcategories: ["Shampoo", "Lotion", "Cream", "Oil", "Diaper care", "Sunscreens", "Perfumes", "Baby diapers"] },
+    { id: "pads", label: "Pads & tools", subcategories: ["Always", "Sofy", "Mulped", "Private", "Fam", "Fresh days", "Cinderella"] },
+    { id: "sun", label: "Sunscreens", subcategories: [] }, { id: "deodorant", label: "Deodorant", subcategories: [] },
+    { id: "acne", label: "Acne routines", subcategories: [] }, { id: "lash", label: "Lashes & brows", subcategories: [] },
+    { id: "lip", label: "Lip care", subcategories: [] }, { id: "nail", label: "Nail care", subcategories: [] }
+  ];
+  const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
   const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {} };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
@@ -24,6 +34,9 @@
     renderProducts();
     renderOrders();
     fillSettings();
+    renderCatalog();
+    renderDeliveryRates();
+    populateCategorySelects();
   }
 
   function variantPriceMarkup(variant) {
@@ -63,6 +76,33 @@
       const field = $(`[data-settings-form] [name="${key}"]`);
       if (field) field.value = value ?? "";
     });
+  }
+
+  const categories = () => Array.isArray(state.settings.catalog_categories) && state.settings.catalog_categories.length ? state.settings.catalog_categories : DEFAULT_CATEGORIES;
+  const deliveryRates = () => Array.isArray(state.settings.delivery_rates) ? state.settings.delivery_rates : [];
+  const idFromLabel = label => String(label || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `category-${Date.now()}`;
+  async function persistSettings(patch) {
+    await api("/api/admin?action=settings", { method: "PATCH", body: JSON.stringify({ settings: patch }) });
+    Object.assign(state.settings, patch);
+  }
+  function categoryOptions(selected = "") {
+    return `<option value="">Choose category</option>${categories().map(category => `<option value="${escapeHtml(category.id)}"${category.id === selected ? " selected" : ""}>${escapeHtml(category.label)}</option>`).join("")}`;
+  }
+  function populateCategorySelects(selectedCategory = "", selectedSubcategory = "") {
+    const productCategory = $("[data-product-category]");
+    const parentCategory = $("[data-parent-category]");
+    productCategory.innerHTML = categoryOptions(selectedCategory || productCategory.value);
+    parentCategory.innerHTML = categoryOptions(parentCategory.value);
+    const activeId = productCategory.value || selectedCategory;
+    const active = categories().find(category => category.id === activeId);
+    $("[data-product-subcategory]").innerHTML = `<option value="">Choose subcategory</option>${(active?.subcategories || []).map(name => `<option value="${escapeHtml(name)}"${name === selectedSubcategory ? " selected" : ""}>${escapeHtml(name)}</option>`).join("")}`;
+  }
+  function renderCatalog() {
+    $("[data-catalog-list]").innerHTML = categories().map(category => `<article class="catalog-card"><div class="catalog-card-head"><h3>${escapeHtml(category.label)}</h3><button type="button" data-remove-category="${escapeHtml(category.id)}">Delete category</button></div><div class="subcategory-chips">${(category.subcategories || []).map(name => `<span>${escapeHtml(name)} <button type="button" aria-label="Delete subcategory" data-remove-subcategory="${escapeHtml(category.id)}" data-subcategory-name="${escapeHtml(name)}">&times;</button></span>`).join("") || "<small>No subcategories yet</small>"}</div></article>`).join("");
+  }
+  function renderDeliveryRates() {
+    $("[data-governorate-select]").innerHTML = `<option value="">Choose governorate</option>${GOVERNORATES.map(name => `<option>${name}</option>`).join("")}`;
+    $("[data-delivery-rates]").innerHTML = deliveryRates().map(rate => `<div class="delivery-rate"><span>${escapeHtml(rate.governorate)}</span><b>${money(rate.fee)}</b><button type="button" data-remove-rate="${escapeHtml(rate.governorate)}">Delete</button></div>`).join("") || "<p class=\"form-help\">No custom prices yet. The default delivery fee is used.</p>";
   }
 
   function calculateVariant(row) {
@@ -105,6 +145,7 @@
     form.reset();
     $("[data-product-error]").textContent = "";
     $("[data-variant-rows]").innerHTML = "";
+    populateCategorySelects(product?.category || "", product?.subcategory || "");
     if (product) Object.entries(product).forEach(([key, value]) => {
       const field = form.elements[key];
       if (field) field.type === "checkbox" ? field.checked = Boolean(value) : field.value = value ?? "";
@@ -165,6 +206,21 @@
       sessionStorage.clear();
       location.reload();
     }
+    const removeCategory = event.target.closest("[data-remove-category]");
+    if (removeCategory && confirm("Delete this category and its subcategories?")) {
+      const next = categories().filter(category => category.id !== removeCategory.dataset.removeCategory);
+      await persistSettings({ catalog_categories: next }); renderCatalog(); populateCategorySelects(); toast("Category deleted");
+    }
+    const removeSubcategory = event.target.closest("[data-remove-subcategory]");
+    if (removeSubcategory) {
+      const next = categories().map(category => category.id === removeSubcategory.dataset.removeSubcategory ? { ...category, subcategories: (category.subcategories || []).filter(name => name !== removeSubcategory.dataset.subcategoryName) } : category);
+      await persistSettings({ catalog_categories: next }); renderCatalog(); populateCategorySelects(); toast("Subcategory deleted");
+    }
+    const removeRate = event.target.closest("[data-remove-rate]");
+    if (removeRate) {
+      const next = deliveryRates().filter(rate => rate.governorate !== removeRate.dataset.removeRate);
+      await persistSettings({ delivery_rates: next }); renderDeliveryRates(); toast("Delivery price deleted");
+    }
   });
 
   document.addEventListener("input", event => {
@@ -175,6 +231,29 @@
         $("[data-product-form]").is_offer.checked = true;
       }
     }
+  });
+  $("[data-product-category]").addEventListener("change", event => populateCategorySelects(event.target.value, ""));
+
+  $("[data-category-form]").addEventListener("submit", async event => {
+    event.preventDefault();
+    const label = event.target.category_name.value.trim();
+    if (!label) return;
+    const next = [...categories(), { id: idFromLabel(label), label, subcategories: [] }];
+    await persistSettings({ catalog_categories: next }); event.target.reset(); renderCatalog(); populateCategorySelects(); toast("Category added");
+  });
+  $("[data-subcategory-form]").addEventListener("submit", async event => {
+    event.preventDefault();
+    const parent = event.target.parent_category.value;
+    const name = event.target.subcategory_name.value.trim();
+    const next = categories().map(category => category.id === parent ? { ...category, subcategories: [...new Set([...(category.subcategories || []), name])] } : category);
+    await persistSettings({ catalog_categories: next }); event.target.reset(); renderCatalog(); populateCategorySelects(); toast("Subcategory added");
+  });
+  $("[data-delivery-form]").addEventListener("submit", async event => {
+    event.preventDefault();
+    const governorate = event.target.governorate.value;
+    const fee = Math.max(0, Number(event.target.fee.value || 0));
+    const next = [...deliveryRates().filter(rate => rate.governorate !== governorate), { governorate, fee }].sort((a, b) => a.governorate.localeCompare(b.governorate));
+    await persistSettings({ delivery_rates: next }); event.target.reset(); renderDeliveryRates(); toast("Delivery price saved");
   });
 
   $("[data-product-form]").addEventListener("submit", async event => {

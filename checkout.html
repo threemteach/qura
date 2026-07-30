@@ -31,7 +31,7 @@
         <div class="step-title"><span>2</span><div><h2>Delivery address</h2><p>Available for delivery across Egypt.</p></div></div>
         <div class="form-grid">
           <label class="full">Street address<input name="address" autocomplete="street-address" required><small></small></label>
-          <label>City<select name="city" required><option value="">Choose city</option><option>Cairo</option><option>Giza</option><option>Alexandria</option><option>Mansoura</option><option>Tanta</option><option>Other</option></select><small></small></label>
+          <label>Governorate<select name="city" required data-governorate><option value="">Choose governorate</option></select><small></small></label>
           <label>Area<input name="area" required><small></small></label>
           <label class="full">Delivery notes <span>(optional)</span><textarea name="notes" rows="3" placeholder="Building, floor, landmark…"></textarea></label>
         </div>
@@ -59,7 +59,7 @@
     <aside class="order-summary">
       <h2>Your order</h2>
       <div data-checkout-items></div>
-      <div class="summary-lines"><p><span>Subtotal</span><b data-summary-subtotal>EGP 0</b></p><p><span>Delivery</span><b>EGP 65</b></p><p class="summary-total"><span>Total</span><b data-summary-total>EGP 65</b></p></div>
+      <div class="summary-lines"><p><span>Subtotal</span><b data-summary-subtotal>EGP 0</b></p><p><span>Delivery</span><b data-summary-delivery>EGP 65</b></p><p class="summary-total"><span>Total</span><b data-summary-total>EGP 65</b></p></div>
       <p class="summary-empty" data-summary-empty hidden>Your bag is empty. <a href="index.html">Start shopping</a></p>
     </aside>
   </main>

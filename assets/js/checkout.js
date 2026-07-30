@@ -16,10 +16,23 @@
     return product ? { ...product, qty: item.qty, selectedPrice: Number(item.price || product.price || 0), variantId: item.variantId, variantLabel: item.variantLabel || "Standard" } : null;
   }).filter(Boolean);
   const subtotal = products.reduce((sum, item) => sum + item.selectedPrice * item.qty, 0);
-  const delivery = products.length ? Number(settings.delivery_fee || 0) : 0;
+  const governorates = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
+  const rates = Array.isArray(settings.delivery_rates) ? settings.delivery_rates : [];
+  let delivery = products.length ? Number(settings.delivery_fee || 0) : 0;
   document.querySelector("[data-checkout-items]").innerHTML = products.map(item => `<div class="checkout-item"><img src="${item.image}" alt=""><div><b>${item.name}</b><small>${item.variantLabel} · Qty ${item.qty}</small></div><strong>${money(item.selectedPrice * item.qty)}</strong></div>`).join("");
   document.querySelector("[data-summary-subtotal]").textContent = money(subtotal);
-  document.querySelector("[data-summary-total]").textContent = money(subtotal + delivery);
+  const deliveryOutput = document.querySelector("[data-summary-delivery]");
+  const totalOutput = document.querySelector("[data-summary-total]");
+  const governorateSelect = document.querySelector("[data-governorate]");
+  governorateSelect.innerHTML = `<option value="">Choose governorate</option>${governorates.map(name => `<option>${name}</option>`).join("")}`;
+  const updateDelivery = () => {
+    const customRate = rates.find(rate => rate.governorate === governorateSelect.value);
+    delivery = products.length ? Number(customRate?.fee ?? settings.delivery_fee ?? 0) : 0;
+    deliveryOutput.textContent = money(delivery);
+    totalOutput.textContent = money(subtotal + delivery);
+  };
+  governorateSelect.addEventListener("change", updateDelivery);
+  updateDelivery();
   document.querySelector("[data-summary-empty]").hidden = products.length > 0;
   let proofData = "";
   const paymentProof = document.querySelector("[data-payment-proof]");
