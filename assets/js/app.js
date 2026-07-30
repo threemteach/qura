@@ -3,7 +3,6 @@
   const money = value => `EGP ${value.toLocaleString("en-EG")}`;
   const $ = selector => document.querySelector(selector);
   const cart = JSON.parse(localStorage.getItem("curaCart") || "[]");
-  const wishlist = JSON.parse(localStorage.getItem("curaWishlist") || "[]");
   let activeFilter = "all";
   let activeSubFilter = "all";
   let activeSort = "featured";
@@ -53,7 +52,6 @@
       <div class="product-image">
         <img src="${product.image}" alt="${product.name}" loading="lazy">
         ${product.badge ? `<span class="badge">${product.badge}</span>` : ""}
-        <button class="wish${wishlist.includes(product.id) ? " active" : ""}" data-wish="${product.id}" type="button" aria-label="Add ${product.name} to wishlist">${wishlist.includes(product.id) ? "♥" : "♡"}</button>
       </div>
       <div class="product-info"><small>${product.brand}</small><h3>${product.name}</h3>
         <div class="rating" aria-label="Rated 4.8 out of 5">★★★★★ <span>4.8</span></div>
@@ -227,18 +225,6 @@
     if (event.target.closest(".drawer a") && !event.target.closest("[data-open-cart]")) showLayer("menu", false);
     if (event.target.closest(".cart-head button")) showLayer("cart", false);
     if (event.target === $(".overlay")) { showLayer("menu", false); showLayer("cart", false); }
-    if (event.target.closest("[data-wish]")) {
-      const button = event.target.closest(".wish");
-      const rawId = button.dataset.wish;
-      const id = findProduct(rawId)?.id ?? rawId;
-      const index = wishlist.findIndex(item => String(item) === String(id));
-      index >= 0 ? wishlist.splice(index, 1) : wishlist.push(id);
-      localStorage.setItem("curaWishlist", JSON.stringify(wishlist));
-      button.classList.toggle("active", index < 0);
-      button.textContent = index < 0 ? "♥" : "♡";
-      document.querySelectorAll("[data-wishlist-count]").forEach(el => el.textContent = wishlist.length);
-      toast(index < 0 ? "Saved to wishlist" : "Removed from wishlist");
-    }
     if (event.target.closest("[data-mobile-filter-toggle]")) {
       const sidebar = $(".catalog-sidebar");
       const open = sidebar.classList.toggle("mobile-open");
@@ -288,7 +274,6 @@
   renderShelves();
   renderProducts();
   saveCart();
-  document.querySelectorAll("[data-wishlist-count]").forEach(el => el.textContent = wishlist.length);
   fetch("/api/catalog").then(response => response.ok ? response.json() : Promise.reject()).then(payload => {
     if (!payload.products?.length) return;
     data.products = payload.products.map(product => {

@@ -44,8 +44,6 @@ img { display: block; max-width: 100%; }
 .icon-button:hover { background: var(--surface); border-color: var(--border); }
 .cart-button { width: auto; padding-inline: 12px; }
 .cart-button b { display: inline-grid; place-items: center; min-width: 19px; height: 19px; margin-left: 3px; padding: 0 4px; color: white; background: var(--purple); border-radius: 50%; font-size: 11px; }
-.wishlist-link { position: relative; display: grid; place-items: center; font-size: 19px; }
-.wishlist-link b { position: absolute; top: 2px; right: 0; display: grid; min-width: 17px; height: 17px; place-items: center; padding-inline: 3px; border-radius: 50%; background: var(--pink); color: white; font-size: 8px; }
 .menu-button { display: none; font-size: 20px; }
 .hero { display: grid; grid-template-columns: .9fr 1.1fr; min-height: 610px; align-items: center; gap: 54px; padding-block: 46px; }
 .eyebrow { margin: 0 0 14px; color: var(--pink); font-size: 12px; font-weight: 700; letter-spacing: .16em; }
@@ -158,8 +156,6 @@ h2 { margin-bottom: 0; font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1.05; }
 .product-image img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
 .product-card:hover .product-image img { transform: scale(1.025); }
 .badge { position: absolute; top: 12px; left: 12px; padding: 5px 8px; border-radius: 6px; background: rgba(255,255,255,.92); color: var(--purple); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
-.wish { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255,255,255,.9); cursor: pointer; font-size: 20px; }
-.wish.active { color: #b73c73; }
 .product-info { display: flex; flex: 1; flex-direction: column; padding: 17px; }
 .product-info > small { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .product-info h3 { min-height: 48px; margin: 5px 0 8px; font: 400 18px/1.35 Georgia, serif; }
@@ -316,7 +312,6 @@ footer { padding-top: 64px; background: #24172a; color: #f9f3f8; }
   .product-card { border-radius: 13px; box-shadow: none; }
   .product-image { aspect-ratio: 1 / 1.06; }
   .badge { top: 7px; left: 7px; padding: 3px 5px; font-size: 7px; }
-  .wish { top: 6px; right: 6px; width: 32px; height: 32px; font-size: 16px; }
   .product-info { padding: 10px; }
   .product-info > small { font-size: 8px; }
   .product-info h3 { min-height: 36px; margin-block: 3px 5px; font-size: 13px; line-height: 1.3; }

@@ -16,7 +16,6 @@ The publishable key is safe for browser-facing requests when RLS is enabled. Nev
 ## Pages
 
 - `index.html` — storefront, category filters, sizes, cart, best sellers and offers
-- `wishlist.html` — saved products
 - `checkout.html` — delivery, InstaPay, Vodafone Cash, cash on delivery and proof upload
 - `track-order.html` — customer order tracking
 - `admin.html` — products, sizes and prices, best sellers, offers, orders and store settings
