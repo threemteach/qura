@@ -1,5 +1,6 @@
 (async () => {
-  const cart = JSON.parse(localStorage.getItem("curaCart") || "[]");
+  const buyNowCart = JSON.parse(localStorage.getItem("curaBuyNow") || "[]");
+  const cart = buyNowCart.length ? buyNowCart : JSON.parse(localStorage.getItem("curaCart") || "[]");
   const money = value => `EGP ${Number(value).toLocaleString("en-EG")}`;
   let catalog = window.CURA_DATA.products;
   let settings = { delivery_fee: 65, instapay_name: "", instapay_address: "01XX XXX XXXX", vodafone_cash_number: "01XX XXX XXXX", payment_note: "" };
@@ -55,19 +56,35 @@
   });
   document.querySelector("[data-remove-proof]").addEventListener("click", () => { proofData = ""; upload.value = ""; document.querySelector("[data-proof-preview]").hidden = true; document.querySelector(".upload-box").hidden = false; });
   const form = document.querySelector("[data-checkout-form]");
+  const phoneInput = form.elements.phone;
+  phoneInput.addEventListener("input", () => {
+    phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 11);
+  });
   form.addEventListener("submit", async event => {
     event.preventDefault(); let valid = true;
+    let firstInvalid = null;
     form.querySelectorAll("[required]:not([type=radio])").forEach(field => {
-      const error = field.parentElement.querySelector("small"); let message = field.value.trim() ? "" : "This field is required.";
-      if (field.name === "phone" && field.value && !/^01[0125]\d{8}$/.test(field.value.replace(/\s/g, ""))) message = "Enter a valid Egyptian phone number.";
-      if (field.name === "email" && field.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value)) message = "Enter a valid email address.";
-      if (error) error.textContent = message; if (message) valid = false;
+      const value = field.value.trim();
+      const error = field.parentElement.querySelector("small");
+      let message = value ? "" : "This field is required.";
+      if (field.name === "name" && value && (value.length < 2 || /\d/.test(value))) message = "Enter a valid full name.";
+      if (field.name === "phone" && value && !/^01[0125]\d{8}$/.test(value)) message = "Enter an 11-digit Egyptian mobile number.";
+      if (field.name === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) message = "Enter a valid email address.";
+      if (field.name === "address" && value && value.length < 5) message = "Enter a more complete street address.";
+      if (field.name === "area" && value && value.length < 2) message = "Enter your area.";
+      field.setAttribute("aria-invalid", String(Boolean(message)));
+      if (error) error.textContent = message;
+      if (message) { valid = false; firstInvalid ||= field; }
     });
     const payment = form.querySelector("[name=payment]:checked");
     if (!payment) { document.querySelector("[data-payment-error]").textContent = "Choose a payment method."; valid = false; }
     else if (payment.value !== "cod" && !proofData) { document.querySelector("[data-proof-error]").textContent = "Upload your payment screenshot."; valid = false; }
     if (!products.length) valid = false;
-    if (!valid) return;
+    if (!valid) {
+      firstInvalid?.focus();
+      firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     const button = form.querySelector(".place-order"); button.disabled = true; button.textContent = "Placing order…";
     try {
       let proofPath = null;
@@ -79,7 +96,7 @@
       const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error);
       const order = { ...result.order, phone: payload.customer.phone, date: new Date(result.order.created_at).toLocaleDateString("en-EG") };
-      localStorage.setItem("curaLastOrder", JSON.stringify(order)); localStorage.removeItem("curaCart");
+      localStorage.setItem("curaLastOrder", JSON.stringify(order)); localStorage.removeItem("curaCart"); localStorage.removeItem("curaBuyNow");
       const trackingUrl = `${location.origin}/track-order.html?order=${encodeURIComponent(order.number)}&token=${encodeURIComponent(order.tracking_token)}`;
       if (payment.value !== "cod") {
         const message = [

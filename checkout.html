@@ -22,17 +22,17 @@
       <section class="form-card">
         <div class="step-title"><span>1</span><div><h2>Contact details</h2><p>We’ll use these details to confirm your order.</p></div></div>
         <div class="form-grid">
-          <label class="full">Full name<input name="name" autocomplete="name" required><small></small></label>
-          <label>Phone number<input name="phone" inputmode="tel" placeholder="01xxxxxxxxx" required><small></small></label>
+          <label class="full">Full name<input name="name" autocomplete="name" minlength="2" required><small></small></label>
+          <label>Phone number<input name="phone" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="11" autocomplete="tel" placeholder="01xxxxxxxxx" required><small></small></label>
           <label>Email address<input name="email" type="email" autocomplete="email" required><small></small></label>
         </div>
       </section>
       <section class="form-card">
         <div class="step-title"><span>2</span><div><h2>Delivery address</h2><p>Available for delivery across Egypt.</p></div></div>
         <div class="form-grid">
-          <label class="full">Street address<input name="address" autocomplete="street-address" required><small></small></label>
+          <label class="full">Street address<input name="address" autocomplete="street-address" minlength="5" required><small></small></label>
           <label>Governorate<select name="city" required data-governorate><option value="">Choose governorate</option></select><small></small></label>
-          <label>Area<input name="area" required><small></small></label>
+          <label>Area<input name="area" minlength="2" required><small></small></label>
           <label class="full">Delivery notes <span>(optional)</span><textarea name="notes" rows="3" placeholder="Building, floor, landmark…"></textarea></label>
         </div>
       </section>

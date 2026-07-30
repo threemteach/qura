@@ -57,7 +57,7 @@
         <div class="rating" aria-label="Rated 4.8 out of 5">★★★★★ <span>4.8</span></div>
         <label class="variant-picker"><span>Size</span><select data-variant>${variants.map((variant, index) => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}"${index === 0 ? " selected" : ""}>${variant.label}</option>`).join("")}</select></label>
         <div class="price"><b>${money(selected.price)}</b>${selected.oldPrice ? `<s>${money(selected.oldPrice)}</s>` : ""}</div>
-        <button class="button button-secondary add-cart" data-add="${product.id}" type="button">Add to bag</button>
+        <div class="product-actions"><button class="button button-secondary add-cart" data-add="${product.id}" type="button">Add to bag</button><button class="button button-primary buy-now" data-buy-now="${product.id}" type="button">Buy now</button></div>
       </div>
     </article>`;
   }
@@ -148,6 +148,7 @@
     const filter = event.target.closest("[data-filter]");
     const subFilter = event.target.closest("[data-sub-filter]");
     const add = event.target.closest("[data-add]");
+    const buyNow = event.target.closest("[data-buy-now]");
     const remove = event.target.closest("[data-remove-key]");
     const shelfView = event.target.closest("[data-shelf-view]");
     const productFocus = event.target.closest("[data-product-focus]");
@@ -168,7 +169,7 @@
       applyFilter(shortcut.dataset.shortcut);
       $("#products").scrollIntoView({ behavior: "smooth" });
     }
-    if (productFocus && !add) {
+    if (productFocus && !add && !buyNow) {
       const product = findProduct(productFocus.dataset.productFocus);
       applyFilter(product.category);
       applySearch(product.name);
@@ -210,6 +211,16 @@
       item ? item.qty++ : cart.push({ id, key, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: 1 });
       saveCart(); toast("Added to your bag");
     }
+    if (buyNow) {
+      const id = buyNow.dataset.buyNow;
+      const card = buyNow.closest(".product-card");
+      const select = card?.querySelector("[data-variant]");
+      const option = select?.selectedOptions[0];
+      const variantId = option?.value || `${id}-default`;
+      localStorage.setItem("curaBuyNow", JSON.stringify([{ id, key: `${id}:${variantId}`, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: 1 }]));
+      location.href = "checkout.html";
+    }
+    if (event.target.closest("[data-cart-checkout]")) localStorage.removeItem("curaBuyNow");
     if (remove) {
       cart.splice(cart.findIndex(i => String(i.key || i.id) === remove.dataset.removeKey), 1);
       saveCart();
