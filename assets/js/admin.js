@@ -9,7 +9,7 @@
     { id: "lip", label: "Lip care", subcategories: [] }, { id: "nail", label: "Nail care", subcategories: [] }
   ];
   const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
-  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {} };
+  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, uploadingImage: false };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -140,9 +140,54 @@
     return slug || `product-${Date.now()}`;
   }
 
+  function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith("image/")) return reject(new Error("Choose a valid image"));
+      if (file.size > 15 * 1024 * 1024) return reject(new Error("Original image must be smaller than 15 MB"));
+      const image = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      image.onload = () => {
+        const maximum = 1400;
+        const scale = Math.min(1, maximum / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(objectUrl);
+        resolve({ dataUrl: canvas.toDataURL("image/webp", 0.78), width: canvas.width, height: canvas.height });
+      };
+      image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Could not read this image")); };
+      image.src = objectUrl;
+    });
+  }
+
+  async function uploadProductImage(file) {
+    const status = $("[data-image-upload-status]");
+    const preview = $("[data-product-image-preview]");
+    state.uploadingImage = true;
+    status.className = "";
+    status.textContent = "Compressing image...";
+    try {
+      const compressed = await compressImage(file);
+      preview.src = compressed.dataUrl;
+      status.textContent = `Uploading compressed image (${compressed.width} × ${compressed.height})...`;
+      const result = await api("/api/product-image", { method: "POST", body: JSON.stringify({ dataUrl: compressed.dataUrl }) });
+      $("[data-product-form]").image_url.value = result.url;
+      preview.src = result.url;
+      status.className = "success";
+      status.textContent = "Image compressed and uploaded successfully.";
+    } catch (error) {
+      status.className = "error";
+      status.textContent = error.message;
+    } finally {
+      state.uploadingImage = false;
+    }
+  }
+
   function openProduct(product) {
     const form = $("[data-product-form]");
     form.reset();
+    state.uploadingImage = false;
     $("[data-product-error]").textContent = "";
     $("[data-variant-rows]").innerHTML = "";
     populateCategorySelects(product?.category || "", product?.subcategory || "");
@@ -150,6 +195,8 @@
       const field = form.elements[key];
       if (field) field.type === "checkbox" ? field.checked = Boolean(value) : field.value = value ?? "";
     });
+    $("[data-product-image-preview]").src = product?.image_url || "assets/images/cura-care-logo.png";
+    $("[data-image-upload-status]").textContent = product?.image_url ? "Current product image" : "Choose an image from your phone";
     (product?.product_variants?.length ? product.product_variants : [{}]).forEach(addVariant);
     $("[data-product-dialog]").showModal();
   }
@@ -233,6 +280,10 @@
     }
   });
   $("[data-product-category]").addEventListener("change", event => populateCategorySelects(event.target.value, ""));
+  $("[data-product-image-file]").addEventListener("change", event => {
+    const file = event.target.files[0];
+    if (file) uploadProductImage(file);
+  });
 
   $("[data-category-form]").addEventListener("submit", async event => {
     event.preventDefault();
@@ -259,6 +310,10 @@
   $("[data-product-form]").addEventListener("submit", async event => {
     event.preventDefault();
     const form = event.target;
+    if (state.uploadingImage) {
+      $("[data-product-error]").textContent = "Wait for the image upload to finish.";
+      return;
+    }
     const raw = Object.fromEntries(new FormData(form));
     const variants = collectVariants();
     if (variants.some(variant => !variant.label || variant.price <= 0)) {

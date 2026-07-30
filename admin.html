@@ -74,9 +74,14 @@
           <label>Brand<input name="brand" required></label>
           <label>Category<select name="category" data-product-category required></select></label>
           <label>Subcategory<select name="subcategory" data-product-subcategory><option value="">Choose subcategory</option></select></label>
-          <label class="wide">Image URL<input name="image_url" type="url" placeholder="https://..."></label>
+          <div class="wide product-image-upload">
+            <input name="image_url" type="hidden">
+            <input id="product-image-file" data-product-image-file type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <label class="image-drop" for="product-image-file"><img data-product-image-preview src="assets/images/cura-care-logo.png" alt=""><span><b>Upload product photo</b><small>Choose from your phone. It will be compressed automatically.</small></span></label>
+            <p data-image-upload-status></p>
+          </div>
           <label class="wide">Description<textarea name="description" rows="3"></textarea></label>
-          <details class="wide"><summary>Advanced</summary><label>Product code (optional)<input name="slug" placeholder="Generated automatically"></label></details>
+          <input name="slug" type="hidden">
         </div>
       </section>
       <section class="form-section">
