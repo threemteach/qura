@@ -12,9 +12,11 @@
     results.innerHTML = orders.map(order => {
       const status = order.status || "confirmed";
       const current = Math.max(0, stages.indexOf(status));
+      const statusNote = status === "on_hold" ? '<p class="tracking-notice">This order is temporarily on hold. The store will contact you if more information is needed.</p>' : status === "cancelled" ? '<p class="tracking-notice cancelled">This order has been cancelled.</p>' : "";
       return `<section class="tracking-result">
         <div class="order-meta"><div><small>ORDER NUMBER</small><b>${escapeHtml(order.number)}</b></div><div><small>PLACED ON</small><b>${new Date(order.created_at).toLocaleDateString("en-EG")}</b></div><div><small>TOTAL</small><b>EGP ${Number(order.total).toLocaleString("en-EG")}</b></div></div>
         <div class="status-head"><span>Current status</span><b>${escapeHtml(status.replaceAll("_", " "))}</b></div>
+        ${statusNote}
         <ol class="timeline">
           <li class="${current >= 0 ? "done" : ""}"><span>✓</span><div><b>Order confirmed</b><small>We received your order.</small></div></li>
           <li class="${current >= 1 ? "done" : ""}"><span>2</span><div><b>Preparing your order</b><small>Your order is being packed.</small></div></li>

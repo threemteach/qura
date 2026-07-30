@@ -25,7 +25,9 @@ export default async function handler(req, res) {
     if (req.method === "GET" && action === "payment-proof") {
       const path = String(req.query.path || "");
       if (!path.startsWith("incoming/")) return json(res, 400, { error: "Invalid payment proof path" });
-      const { data, error } = await db.storage.from("payment-proofs").createSignedUrl(path, 300);
+      const extension = path.split(".").pop() || "jpg";
+      const options = req.query.download === "1" ? { download: `cura-payment-proof-${Date.now()}.${extension}` } : undefined;
+      const { data, error } = await db.storage.from("payment-proofs").createSignedUrl(path, 300, options);
       if (error) throw error;
       return json(res, 200, { url: data.signedUrl });
     }
@@ -60,6 +62,11 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true });
     }
     if (req.method === "PATCH" && action === "order") {
+      if (req.body.status === "cancelled") {
+        const { error } = await db.rpc("cancel_order", { p_order_id: req.body.id });
+        if (error) throw error;
+        return json(res, 200, { ok: true, cancelled: true });
+      }
       if (req.body.status === "delivered") {
         const { data: order, error: orderError } = await db.from("orders").select("payment_proof_path").eq("id", req.body.id).single();
         if (orderError) throw orderError;

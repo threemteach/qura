@@ -4,3 +4,4 @@
 .checkout-errors{margin:0 0 13px;padding:14px 16px;border:1px solid #e5b7bd;border-radius:12px;background:#fff4f5;color:#843f49;font-size:10px}.checkout-errors b{display:block;margin-bottom:7px;font-size:12px}.checkout-errors ul{display:grid;gap:4px;margin:0;padding-left:18px}
 .track-form-single{grid-template-columns:1fr auto}.tracking-results{display:grid;gap:18px}.tracking-results .tracking-result{margin-top:0}
 @media(max-width:760px){.track-form-single{grid-template-columns:1fr}.tracking-results{gap:12px}}
+.tracking-notice{margin:-8px 0 18px;padding:11px 13px;border-radius:10px;background:#fff5df;color:#7a5a18;font-size:10px}.tracking-notice.cancelled{background:#fff0f1;color:#91414b}
