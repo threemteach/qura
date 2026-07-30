@@ -58,6 +58,7 @@
         <div class="rating" aria-label="Rated 4.8 out of 5">★★★★★ <span>4.8</span></div>
         <label class="variant-picker"><span>Size</span><select data-variant>${variants.map(variant => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}" data-stock="${variant.stock ?? ""}"${variant.id === selected.id ? " selected" : ""}${variant.stock === 0 ? " disabled" : ""}>${variant.label}${variant.stock === 0 ? " — Sold out" : ""}</option>`).join("")}</select></label>
         <div class="price"><b>${money(selected.price)}</b><s${selected.oldPrice ? "" : " hidden"}>${selected.oldPrice ? money(selected.oldPrice) : ""}</s></div>
+        <div class="card-quantity"><span>Quantity</span><div><button type="button" data-card-quantity="minus" aria-label="Reduce quantity">−</button><b data-card-quantity-value>1</b><button type="button" data-card-quantity="plus" aria-label="Increase quantity">+</button></div></div>
         <div class="product-actions"><button class="button button-secondary add-cart" data-add="${product.id}" type="button"${soldOut ? " disabled" : ""}>${soldOut ? "Sold out" : "Add to bag"}</button><button class="button button-primary buy-now" data-buy-now="${product.id}" type="button"${soldOut ? " disabled" : ""}>Buy now</button></div>
       </div>
     </article>`;
@@ -152,6 +153,7 @@
     const buyNow = event.target.closest("[data-buy-now]");
     const remove = event.target.closest("[data-remove-key]");
     const quantity = event.target.closest("[data-quantity]");
+    const cardQuantity = event.target.closest("[data-card-quantity]");
     const shelfView = event.target.closest("[data-shelf-view]");
     const productFocus = event.target.closest("[data-product-focus]");
     const shortcut = event.target.closest("[data-shortcut]");
@@ -171,7 +173,7 @@
       applyFilter(shortcut.dataset.shortcut);
       $("#products").scrollIntoView({ behavior: "smooth" });
     }
-    if (productFocus && !add && !buyNow) {
+    if (productFocus && !add && !buyNow && !cardQuantity) {
       const product = findProduct(productFocus.dataset.productFocus);
       applyFilter(product.category);
       applySearch(product.name);
@@ -205,21 +207,23 @@
     if (add) {
       const id = add.dataset.add;
       const card = add.closest(".product-card");
+      const requestedQty = Number(card?.querySelector("[data-card-quantity-value]")?.textContent || 1);
       const select = card?.querySelector("[data-variant]");
       const option = select?.selectedOptions[0];
       const variantId = option?.value || `${id}-default`;
       const key = `${id}:${variantId}`;
       const item = cart.find(i => (i.key || `${i.id}:legacy`) === key);
-      item ? item.qty++ : cart.push({ id, key, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: 1 });
+      item ? item.qty += requestedQty : cart.push({ id, key, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: requestedQty });
       saveCart(); toast("Added to your bag");
     }
     if (buyNow) {
       const id = buyNow.dataset.buyNow;
       const card = buyNow.closest(".product-card");
+      const requestedQty = Number(card?.querySelector("[data-card-quantity-value]")?.textContent || 1);
       const select = card?.querySelector("[data-variant]");
       const option = select?.selectedOptions[0];
       const variantId = option?.value || `${id}-default`;
-      localStorage.setItem("curaBuyNow", JSON.stringify([{ id, key: `${id}:${variantId}`, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: 1 }]));
+      localStorage.setItem("curaBuyNow", JSON.stringify([{ id, key: `${id}:${variantId}`, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: requestedQty }]));
       location.href = "checkout.html";
     }
     if (event.target.closest("[data-cart-checkout]")) localStorage.removeItem("curaBuyNow");
@@ -234,6 +238,11 @@
         if (item.qty <= 0) cart.splice(cart.indexOf(item), 1);
         saveCart();
       }
+    }
+    if (cardQuantity) {
+      const value = cardQuantity.parentElement.querySelector("[data-card-quantity-value]");
+      const current = Number(value.textContent || 1);
+      value.textContent = cardQuantity.dataset.cardQuantity === "plus" ? Math.min(99, current + 1) : Math.max(1, current - 1);
     }
     if (event.target.closest(".menu-button")) showLayer("menu", true);
     if (event.target.closest(".cart-button")) showLayer("cart", true);

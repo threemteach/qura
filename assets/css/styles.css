@@ -168,6 +168,7 @@ h2 { margin-bottom: 0; font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1.05; }
 .add-cart { width: 100%; margin-top: auto; }
 .product-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:auto}.product-actions .button{width:100%;min-width:0;padding-inline:8px}.buy-now{font-size:11px}
 .product-actions .button:disabled{cursor:not-allowed;opacity:.48}
+.card-quantity{display:flex;align-items:center;justify-content:space-between;margin:7px 0 9px;color:var(--muted);font-size:9px}.card-quantity>div{display:grid;grid-template-columns:28px 28px 28px;align-items:center;overflow:hidden;border:1px solid var(--border);border-radius:8px}.card-quantity button{min-height:28px;border:0;background:#f8f4f8;color:var(--purple);cursor:pointer;font-size:15px}.card-quantity b{text-align:center;color:var(--text);font-size:10px}
 .empty-state { padding: 60px; border: 1px dashed var(--border); text-align: center; color: var(--muted); }
 .banner { display: grid; grid-template-columns: 1fr .8fr; align-items: center; gap: 50px; margin-block: 40px 104px; padding: 64px; background: var(--surface); border-radius: 28px; overflow: hidden; }
 .banner p:not(.eyebrow) { max-width: 560px; margin: 24px 0; color: var(--muted); }
@@ -325,6 +326,7 @@ footer { padding-top: 64px; background: #24172a; color: #f9f3f8; }
   .variant-picker select { min-width: 78px; height: 30px; font-size: 8px; }
   .add-cart { min-height: 38px; padding-inline: 5px; border-radius: 9px; font-size: 10px; }
   .product-actions{grid-template-columns:1fr;gap:5px}.product-actions .button{min-height:36px;padding-inline:4px;font-size:9px}
+  .card-quantity{margin-block:5px 7px}.card-quantity>div{grid-template-columns:26px 25px 26px}.card-quantity button{min-height:26px}
   .banner { grid-template-columns: 1.15fr .85fr; gap: 14px; margin-bottom: 42px; padding: 24px 18px; text-align: left; }
   .banner .button { margin-inline: auto; }
   .banner h2 { font-size: 25px; }
