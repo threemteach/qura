@@ -22,6 +22,13 @@ export default async function handler(req, res) {
       if (error) throw error;
       return json(res, 200, { products: products.data, orders: orders.data, settings: settings.data });
     }
+    if (req.method === "GET" && action === "payment-proof") {
+      const path = String(req.query.path || "");
+      if (!path.startsWith("incoming/")) return json(res, 400, { error: "Invalid payment proof path" });
+      const { data, error } = await db.storage.from("payment-proofs").createSignedUrl(path, 300);
+      if (error) throw error;
+      return json(res, 200, { url: data.signedUrl });
+    }
     if (req.method === "POST" && action === "product") {
       const { variants = [], ...product } = req.body.product;
       const { data, error } = await db.from("products").insert(product).select().single();

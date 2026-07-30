@@ -9,7 +9,7 @@
     { id: "lip", label: "Lip care", subcategories: [] }, { id: "nail", label: "Nail care", subcategories: [] }
   ];
   const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
-  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, uploadingImage: false };
+  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, uploadingImage: false, loadedOnce: false };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -28,8 +28,23 @@
     return body;
   };
 
+  function notifyNewOrders(previousOrders, nextOrders) {
+    if (!state.loadedOnce || !("Notification" in window) || Notification.permission !== "granted") return;
+    const previousIds = new Set(previousOrders.map(order => order.id));
+    nextOrders.filter(order => !previousIds.has(order.id)).forEach(order => {
+      const notification = new Notification(`New Cura Care order: ${order.order_number}`, {
+        body: `${order.customer_name} • ${money(order.total)}`,
+        icon: "assets/images/cura-care-logo.png",
+        tag: order.id
+      });
+      notification.onclick = () => { window.focus(); notification.close(); };
+    });
+  }
+
   async function load() {
+    const previousOrders = state.orders;
     const data = await api("/api/admin?action=dashboard");
+    notifyNewOrders(previousOrders, data.orders || []);
     Object.assign(state, data);
     renderProducts();
     renderOrders();
@@ -37,6 +52,9 @@
     renderCatalog();
     renderDeliveryRates();
     populateCategorySelects();
+    state.loadedOnce = true;
+    const notificationButton = $("[data-enable-notifications]");
+    if ("Notification" in window && Notification.permission === "granted") notificationButton.textContent = "Notifications on";
   }
 
   function variantPriceMarkup(variant) {
@@ -65,7 +83,7 @@
       <tr>
         <td><span><b>${escapeHtml(order.order_number)}</b><small>${new Date(order.created_at).toLocaleDateString()}</small></span></td>
         <td data-label="Customer">${escapeHtml(order.customer_name)}<small>${escapeHtml(order.phone)}</small></td>
-        <td data-label="Payment">${escapeHtml(order.payment_method)}</td>
+        <td data-label="Payment">${escapeHtml(order.payment_method)}${order.payment_proof_path ? `<button class="proof-link" data-view-proof="${escapeHtml(order.payment_proof_path)}">View proof</button>` : ""}</td>
         <td data-label="Total">${money(order.total)}</td>
         <td data-label="Status"><select class="status-select" data-order-status="${order.id}">${["confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"].map(status => `<option value="${status}"${status === order.status ? " selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select></td>
       </tr>`).join("");
@@ -269,6 +287,19 @@
       const next = deliveryRates().filter(rate => rate.governorate !== removeRate.dataset.removeRate);
       await persistSettings({ delivery_rates: next }); renderDeliveryRates(); toast("Delivery price deleted");
     }
+    const proofButton = event.target.closest("[data-view-proof]");
+    if (proofButton) {
+      try {
+        const result = await api(`/api/admin?action=payment-proof&path=${encodeURIComponent(proofButton.dataset.viewProof)}`);
+        window.open(result.url, "_blank", "noopener");
+      } catch (error) { toast(error.message); }
+    }
+    if (event.target.closest("[data-enable-notifications]")) {
+      if (!("Notification" in window)) return toast("Notifications are not supported on this browser");
+      const permission = await Notification.requestPermission();
+      event.target.closest("[data-enable-notifications]").textContent = permission === "granted" ? "Notifications on" : "Notifications blocked";
+      toast(permission === "granted" ? "New order notifications enabled" : "Allow notifications from browser settings");
+    }
   });
 
   document.addEventListener("input", event => {
@@ -362,4 +393,5 @@
     $("[data-admin-app]").hidden = false;
     load();
   }).catch(() => sessionStorage.clear());
+  setInterval(() => { if (state.token && !$("[data-admin-app]").hidden) load().catch(() => {}); }, 30000);
 })();

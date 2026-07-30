@@ -125,21 +125,7 @@
       const order = { ...result.order, phone: payload.customer.phone, date: new Date(result.order.created_at).toLocaleDateString("en-EG") };
       localStorage.setItem("curaLastOrder", JSON.stringify(order)); localStorage.removeItem("curaCart"); localStorage.removeItem("curaBuyNow");
       const trackingUrl = `${location.origin}/track-order.html?order=${encodeURIComponent(order.number)}&token=${encodeURIComponent(order.tracking_token)}`;
-      if (payment.value !== "cod") {
-        const message = [
-          "Cura Care payment confirmation",
-          `Order: ${order.number}`,
-          `Customer: ${payload.customer.name}`,
-          `Phone: ${payload.customer.phone}`,
-          `Total: ${money(result.order.total)}`,
-          `Track order: ${trackingUrl}`,
-          "",
-          "Please attach the transfer screenshot in this chat."
-        ].join("\n");
-        location.href = `https://wa.me/201281899203?text=${encodeURIComponent(message)}`;
-      } else {
-        location.href = trackingUrl;
-      }
+      location.href = trackingUrl;
     } catch (error) {
       document.querySelector("[data-payment-error]").textContent = error.message; button.disabled = false; button.textContent = "Place order";
     }
