@@ -79,13 +79,17 @@
   }
 
   function renderOrders() {
+    const completed = state.orders.filter(order => ["delivered", "cancelled"].includes(order.status));
+    const reminder = $("[data-cleanup-reminder]");
+    reminder.hidden = completed.length === 0;
+    reminder.innerHTML = completed.length ? `<b>Storage reminder</b><span>${completed.length} completed order${completed.length === 1 ? "" : "s"} can be deleted when you no longer need them.</span>` : "";
     $("[data-orders-table]").innerHTML = state.orders.map(order => `
       <tr>
         <td><span><b>${escapeHtml(order.order_number)}</b><small>${new Date(order.created_at).toLocaleDateString()}</small></span></td>
         <td data-label="Customer">${escapeHtml(order.customer_name)}<small>${escapeHtml(order.phone)}</small></td>
         <td data-label="Payment">${escapeHtml(order.payment_method)}${order.payment_proof_path ? `<div class="proof-actions"><button class="proof-link" data-view-proof="${escapeHtml(order.payment_proof_path)}">View</button><button class="proof-link" data-download-proof="${escapeHtml(order.payment_proof_path)}">Download</button><button class="proof-delete" data-delete-proof="${order.id}">Delete</button></div>` : ""}</td>
         <td data-label="Total">${money(order.total)}</td>
-        <td data-label="Status"><select class="status-select" data-order-status="${order.id}">${["confirmed", "preparing", "on_hold", "out_for_delivery", "delivered", "cancelled"].map(status => `<option value="${status}"${status === order.status ? " selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select></td>
+        <td data-label="Status"><select class="status-select" data-order-status="${order.id}">${["confirmed", "preparing", "on_hold", "out_for_delivery", "delivered", "cancelled"].map(status => `<option value="${status}"${status === order.status ? " selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select>${["delivered", "cancelled"].includes(order.status) ? `<button class="delete-completed" data-delete-order="${order.id}">Delete order</button>` : ""}</td>
       </tr>`).join("");
   }
 
@@ -309,6 +313,14 @@
         await load();
       } catch (error) { toast(error.message); }
     }
+    const deleteOrder = event.target.closest("[data-delete-order]");
+    if (deleteOrder && confirm("Permanently delete this completed order, its items, and payment proof?")) {
+      try {
+        await api(`/api/admin?action=order&id=${encodeURIComponent(deleteOrder.dataset.deleteOrder)}`, { method: "DELETE" });
+        toast("Completed order deleted");
+        await load();
+      } catch (error) { toast(error.message); }
+    }
     if (event.target.closest("[data-enable-notifications]")) {
       if (!("Notification" in window)) return toast("Notifications are not supported on this browser");
       const permission = await Notification.requestPermission();
@@ -397,17 +409,13 @@
   $("[data-admin-search]").addEventListener("input", event => renderProducts(event.target.value));
   document.addEventListener("change", async event => {
     if (event.target.matches("[data-order-status]")) {
-      if (event.target.value === "delivered" && !confirm("Mark as delivered? The order, its items, and payment proof will be permanently deleted.")) {
-        await load();
-        return;
-      }
       if (event.target.value === "cancelled" && !confirm("Cancel this order and return its quantities to stock?")) {
         await load();
         return;
       }
       try {
         const result = await api("/api/admin?action=order", { method: "PATCH", body: JSON.stringify({ id: event.target.dataset.orderStatus, status: event.target.value }) });
-        toast(result.deleted ? "Delivered order and proof deleted" : result.cancelled ? "Order cancelled and stock restored" : event.target.value === "on_hold" ? "Order placed on hold" : "Delivery status updated");
+        toast(result.cancelled ? "Order cancelled and stock restored" : event.target.value === "delivered" ? "Order delivered — delete it later when no longer needed" : event.target.value === "on_hold" ? "Order placed on hold" : "Delivery status updated");
         await load();
       } catch (error) { toast(error.message); await load(); }
     }
