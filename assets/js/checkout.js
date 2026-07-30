@@ -124,7 +124,7 @@
       const result = await response.json(); if (!response.ok) throw new Error(result.error);
       const order = { ...result.order, phone: payload.customer.phone, date: new Date(result.order.created_at).toLocaleDateString("en-EG") };
       localStorage.setItem("curaLastOrder", JSON.stringify(order)); localStorage.removeItem("curaCart"); localStorage.removeItem("curaBuyNow");
-      const trackingUrl = `${location.origin}/track-order.html?order=${encodeURIComponent(order.number)}&token=${encodeURIComponent(order.tracking_token)}`;
+      const trackingUrl = `${location.origin}/track-order?order=${encodeURIComponent(order.number)}&token=${encodeURIComponent(order.tracking_token)}`;
       location.href = trackingUrl;
     } catch (error) {
       document.querySelector("[data-payment-error]").textContent = error.message; button.disabled = false; button.textContent = "Place order";

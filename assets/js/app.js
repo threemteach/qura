@@ -224,7 +224,7 @@
       const option = select?.selectedOptions[0];
       const variantId = option?.value || `${id}-default`;
       localStorage.setItem("curaBuyNow", JSON.stringify([{ id, key: `${id}:${variantId}`, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: requestedQty }]));
-      location.href = "checkout.html";
+      location.href = "/checkout";
     }
     if (event.target.closest("[data-cart-checkout]")) localStorage.removeItem("curaBuyNow");
     if (remove) {
