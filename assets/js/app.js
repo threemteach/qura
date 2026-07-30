@@ -11,7 +11,7 @@
 
   const variantsFor = product => {
     const remote = product.product_variants || product.variants;
-    if (remote?.length) return remote.map(variant => ({ id: variant.id || variant.label, label: variant.label, price: Number(variant.price), oldPrice: variant.old_price ?? variant.oldPrice }));
+    if (remote?.length) return remote.map(variant => ({ id: variant.id || variant.label, label: variant.label, price: Number(variant.price), oldPrice: variant.old_price ?? variant.oldPrice, stock: variant.stock == null ? null : Number(variant.stock) }));
     const unit = ["body", "hair", "baby", "sun"].includes(product.category) ? "ml" : "g";
     return [
       { id: `${product.id}-small`, label: `50 ${unit}`, price: product.price, oldPrice: product.oldPrice },
@@ -47,7 +47,8 @@
 
   function productCard(product) {
     const variants = variantsFor(product);
-    const selected = variants[0];
+    const selected = variants.find(variant => variant.stock !== 0) || variants[0];
+    const soldOut = variants.every(variant => variant.stock === 0);
     return `<article class="product-card">
       <div class="product-image">
         <img src="${product.image}" alt="${product.name}" loading="lazy">
@@ -55,9 +56,9 @@
       </div>
       <div class="product-info"><small>${product.brand}</small><h3>${product.name}</h3>
         <div class="rating" aria-label="Rated 4.8 out of 5">★★★★★ <span>4.8</span></div>
-        <label class="variant-picker"><span>Size</span><select data-variant>${variants.map((variant, index) => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}"${index === 0 ? " selected" : ""}>${variant.label}</option>`).join("")}</select></label>
+        <label class="variant-picker"><span>Size</span><select data-variant>${variants.map(variant => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}" data-stock="${variant.stock ?? ""}"${variant.id === selected.id ? " selected" : ""}${variant.stock === 0 ? " disabled" : ""}>${variant.label}${variant.stock === 0 ? " — Sold out" : ""}</option>`).join("")}</select></label>
         <div class="price"><b>${money(selected.price)}</b><s${selected.oldPrice ? "" : " hidden"}>${selected.oldPrice ? money(selected.oldPrice) : ""}</s></div>
-        <div class="product-actions"><button class="button button-secondary add-cart" data-add="${product.id}" type="button">Add to bag</button><button class="button button-primary buy-now" data-buy-now="${product.id}" type="button">Buy now</button></div>
+        <div class="product-actions"><button class="button button-secondary add-cart" data-add="${product.id}" type="button"${soldOut ? " disabled" : ""}>${soldOut ? "Sold out" : "Add to bag"}</button><button class="button button-primary buy-now" data-buy-now="${product.id}" type="button"${soldOut ? " disabled" : ""}>Buy now</button></div>
       </div>
     </article>`;
   }

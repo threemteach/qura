@@ -167,6 +167,7 @@ h2 { margin-bottom: 0; font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1.05; }
 .variant-picker select { min-width: 95px; height: 34px; padding: 0 27px 0 9px; border: 1px solid var(--border); border-radius: 8px; background: #fcfafc; color: var(--text); font-size: 10px; }
 .add-cart { width: 100%; margin-top: auto; }
 .product-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:auto}.product-actions .button{width:100%;min-width:0;padding-inline:8px}.buy-now{font-size:11px}
+.product-actions .button:disabled{cursor:not-allowed;opacity:.48}
 .empty-state { padding: 60px; border: 1px dashed var(--border); text-align: center; color: var(--muted); }
 .banner { display: grid; grid-template-columns: 1fr .8fr; align-items: center; gap: 50px; margin-block: 40px 104px; padding: 64px; background: var(--surface); border-radius: 28px; overflow: hidden; }
 .banner p:not(.eyebrow) { max-width: 560px; margin: 24px 0; color: var(--muted); }

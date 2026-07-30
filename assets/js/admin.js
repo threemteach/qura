@@ -124,7 +124,7 @@
     const fragment = $("[data-variant-template]").content.cloneNode(true);
     const row = fragment.querySelector(".variant-row");
     row.querySelector('[data-v="label"]').value = variant.label || "";
-    row.querySelector('[data-v="stock"]').value = variant.stock ?? 0;
+    row.querySelector('[data-v="stock"]').value = variant.stock ?? 1;
     const original = Number(variant.old_price || variant.price || 0);
     const discount = variant.old_price && Number(variant.old_price) > Number(variant.price)
       ? Math.round((1 - Number(variant.price) / Number(variant.old_price)) * 100)
