@@ -10,9 +10,10 @@ export default async function handler(req, res) {
       return json(res, 201, { order: data });
     }
     if (req.method === "GET") {
-      const { data, error } = await db.rpc("track_order", { p_order_number: req.query.order, p_phone: req.query.phone, p_tracking_token: req.query.token || null });
+      const query = req.query.query || req.query.order || req.query.phone;
+      const { data, error } = await db.rpc("track_orders", { p_query: query, p_tracking_token: req.query.token || null });
       if (error) throw error;
-      return data ? json(res, 200, { order: data }) : json(res, 404, { error: "Order not found" });
+      return data?.length ? json(res, 200, { orders: data }) : json(res, 404, { error: "Order not found" });
     }
     json(res, 405, { error: "Method not allowed" });
   } catch (error) { json(res, 400, { error: error.message }); }

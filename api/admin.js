@@ -60,7 +60,29 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true });
     }
     if (req.method === "PATCH" && action === "order") {
+      if (req.body.status === "delivered") {
+        const { data: order, error: orderError } = await db.from("orders").select("payment_proof_path").eq("id", req.body.id).single();
+        if (orderError) throw orderError;
+        if (order.payment_proof_path) {
+          const { error: storageError } = await db.storage.from("payment-proofs").remove([order.payment_proof_path]);
+          if (storageError) throw storageError;
+        }
+        const { error: deleteError } = await db.from("orders").delete().eq("id", req.body.id);
+        if (deleteError) throw deleteError;
+        return json(res, 200, { ok: true, deleted: true });
+      }
       const { error } = await db.from("orders").update({ status: req.body.status, updated_at: new Date().toISOString() }).eq("id", req.body.id);
+      if (error) throw error;
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === "DELETE" && action === "payment-proof") {
+      const { data: order, error: orderError } = await db.from("orders").select("payment_proof_path").eq("id", req.query.id).single();
+      if (orderError) throw orderError;
+      if (order.payment_proof_path) {
+        const { error: storageError } = await db.storage.from("payment-proofs").remove([order.payment_proof_path]);
+        if (storageError) throw storageError;
+      }
+      const { error } = await db.from("orders").update({ payment_proof_path: null, updated_at: new Date().toISOString() }).eq("id", req.query.id);
       if (error) throw error;
       return json(res, 200, { ok: true });
     }

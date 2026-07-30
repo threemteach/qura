@@ -1,62 +1,68 @@
 (() => {
   const form = document.querySelector("[data-track-form]");
+  const input = form.elements.query;
   const errorOutput = document.querySelector("[data-track-error]");
+  const results = document.querySelector("[data-tracking-results]");
   const saved = JSON.parse(localStorage.getItem("curaLastOrder") || "null");
   const params = new URLSearchParams(location.search);
+  const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 
-  function show(order) {
-    document.querySelector("[data-track-number]").textContent = order.number;
-    document.querySelector("[data-track-date]").textContent = order.date || new Date(order.created_at).toLocaleDateString("en-EG");
-    document.querySelector("[data-track-total]").textContent = `EGP ${Number(order.total).toLocaleString("en-EG")}`;
+  function render(orders) {
     const stages = ["confirmed", "preparing", "out_for_delivery", "delivered"];
-    const current = stages.indexOf(order.status || "confirmed");
-    document.querySelectorAll(".timeline li").forEach((item, index) => item.classList.toggle("done", index <= current));
-    document.querySelector(".status-head b").textContent = (order.status || "confirmed").replaceAll("_", " ");
-    document.querySelector("[data-tracking-result]").hidden = false;
+    results.innerHTML = orders.map(order => {
+      const status = order.status || "confirmed";
+      const current = Math.max(0, stages.indexOf(status));
+      return `<section class="tracking-result">
+        <div class="order-meta"><div><small>ORDER NUMBER</small><b>${escapeHtml(order.number)}</b></div><div><small>PLACED ON</small><b>${new Date(order.created_at).toLocaleDateString("en-EG")}</b></div><div><small>TOTAL</small><b>EGP ${Number(order.total).toLocaleString("en-EG")}</b></div></div>
+        <div class="status-head"><span>Current status</span><b>${escapeHtml(status.replaceAll("_", " "))}</b></div>
+        <ol class="timeline">
+          <li class="${current >= 0 ? "done" : ""}"><span>✓</span><div><b>Order confirmed</b><small>We received your order.</small></div></li>
+          <li class="${current >= 1 ? "done" : ""}"><span>2</span><div><b>Preparing your order</b><small>Your order is being packed.</small></div></li>
+          <li class="${current >= 2 ? "done" : ""}"><span>3</span><div><b>Out for delivery</b><small>The courier is on the way.</small></div></li>
+          <li class="${current >= 3 ? "done" : ""}"><span>4</span><div><b>Delivered</b><small>Your order has arrived.</small></div></li>
+        </ol>
+      </section>`;
+    }).join("");
     errorOutput.textContent = "";
   }
 
   async function track() {
-    const orderNumber = form.elements.order.value.trim().toUpperCase();
-    const phone = form.elements.phone.value.replace(/\D/g, "");
-    if (!orderNumber || !/^01[0125]\d{8}$/.test(phone)) {
-      errorOutput.textContent = "Enter your order number and a valid 11-digit Egyptian mobile number.";
-      document.querySelector("[data-tracking-result]").hidden = true;
+    const query = input.value.trim();
+    const isPhone = /^01[0125]\d{8}$/.test(query.replace(/\D/g, ""));
+    const isOrder = /^CC-[A-Z0-9]{6,}$/i.test(query);
+    if (!isPhone && !isOrder) {
+      results.innerHTML = "";
+      errorOutput.textContent = "Enter a valid 11-digit Egyptian mobile number or an order number such as CC-123456.";
       return;
     }
+    const normalized = isPhone ? query.replace(/\D/g, "") : query.toUpperCase();
     const button = form.querySelector("button");
     button.disabled = true;
     button.textContent = "Checking...";
     try {
-      const token = params.get("order") === orderNumber ? params.get("token") : "";
-      const response = await fetch(`/api/orders?order=${encodeURIComponent(orderNumber)}&phone=${encodeURIComponent(phone)}${token ? `&token=${encodeURIComponent(token)}` : ""}`);
+      const token = params.get("order")?.toUpperCase() === normalized ? params.get("token") : "";
+      const response = await fetch(`/api/orders?query=${encodeURIComponent(normalized)}${token ? `&token=${encodeURIComponent(token)}` : ""}`);
       const result = await response.json();
-      if (!response.ok || !result.order) throw new Error("Order not found");
-      show(result.order);
+      if (!response.ok || !result.orders?.length) throw new Error("Order not found");
+      render(result.orders);
     } catch {
-      document.querySelector("[data-tracking-result]").hidden = true;
-      errorOutput.textContent = "We couldn't find an order with these details. Check the order number and phone.";
+      results.innerHTML = "";
+      errorOutput.textContent = "We couldn't find any orders with this mobile or order number.";
     } finally {
       button.disabled = false;
       button.textContent = "Track order";
     }
   }
 
-  form.elements.phone.addEventListener("input", event => {
-    event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11);
-    errorOutput.textContent = "";
-  });
-  form.addEventListener("submit", event => {
-    event.preventDefault();
-    track();
-  });
+  input.addEventListener("input", () => { errorOutput.textContent = ""; });
+  form.addEventListener("submit", event => { event.preventDefault(); track(); });
 
   const urlOrder = params.get("order");
-  if (urlOrder) form.elements.order.value = urlOrder;
-  if (saved && (!urlOrder || urlOrder === saved.number)) {
-    form.elements.order.value = saved.number;
-    form.elements.phone.value = saved.phone;
-    show(saved);
+  if (urlOrder) {
+    input.value = urlOrder;
+    track();
+  } else if (saved?.phone) {
+    input.value = saved.phone;
     track();
   }
 })();

@@ -83,7 +83,7 @@
       <tr>
         <td><span><b>${escapeHtml(order.order_number)}</b><small>${new Date(order.created_at).toLocaleDateString()}</small></span></td>
         <td data-label="Customer">${escapeHtml(order.customer_name)}<small>${escapeHtml(order.phone)}</small></td>
-        <td data-label="Payment">${escapeHtml(order.payment_method)}${order.payment_proof_path ? `<button class="proof-link" data-view-proof="${escapeHtml(order.payment_proof_path)}">View proof</button>` : ""}</td>
+        <td data-label="Payment">${escapeHtml(order.payment_method)}${order.payment_proof_path ? `<div class="proof-actions"><button class="proof-link" data-view-proof="${escapeHtml(order.payment_proof_path)}">View proof</button><button class="proof-delete" data-delete-proof="${order.id}">Delete proof</button></div>` : ""}</td>
         <td data-label="Total">${money(order.total)}</td>
         <td data-label="Status"><select class="status-select" data-order-status="${order.id}">${["confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"].map(status => `<option value="${status}"${status === order.status ? " selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select></td>
       </tr>`).join("");
@@ -294,6 +294,14 @@
         window.open(result.url, "_blank", "noopener");
       } catch (error) { toast(error.message); }
     }
+    const deleteProof = event.target.closest("[data-delete-proof]");
+    if (deleteProof && confirm("Permanently delete this payment proof from storage?")) {
+      try {
+        await api(`/api/admin?action=payment-proof&id=${encodeURIComponent(deleteProof.dataset.deleteProof)}`, { method: "DELETE" });
+        toast("Payment proof deleted");
+        await load();
+      } catch (error) { toast(error.message); }
+    }
     if (event.target.closest("[data-enable-notifications]")) {
       if (!("Notification" in window)) return toast("Notifications are not supported on this browser");
       const permission = await Notification.requestPermission();
@@ -382,8 +390,15 @@
   $("[data-admin-search]").addEventListener("input", event => renderProducts(event.target.value));
   document.addEventListener("change", async event => {
     if (event.target.matches("[data-order-status]")) {
-      await api("/api/admin?action=order", { method: "PATCH", body: JSON.stringify({ id: event.target.dataset.orderStatus, status: event.target.value }) });
-      toast("Delivery status updated");
+      if (event.target.value === "delivered" && !confirm("Mark as delivered? The order, its items, and payment proof will be permanently deleted.")) {
+        await load();
+        return;
+      }
+      try {
+        const result = await api("/api/admin?action=order", { method: "PATCH", body: JSON.stringify({ id: event.target.dataset.orderStatus, status: event.target.value }) });
+        toast(result.deleted ? "Delivered order and proof deleted" : "Delivery status updated");
+        await load();
+      } catch (error) { toast(error.message); await load(); }
     }
   });
 

@@ -11,21 +11,11 @@
 <body class="track-page">
   <header class="checkout-header"><div class="container"><a class="brand" href="index.html"><img src="assets/images/cura-care-logo.png" alt=""><span>CURA CARE<small>HIDDEN INSIDE</small></span></a><span>Order tracking</span><a href="index.html">← Home</a></div></header>
   <main class="track-shell container">
-    <section class="track-intro"><p class="eyebrow">YOUR ORDER, STEP BY STEP</p><h1>Track your order</h1><p>Enter your order number and phone number to see the latest status.</p>
-      <form class="track-form" data-track-form><label>Order number<input name="order" placeholder="CC-123456" required></label><label>Phone number<input name="phone" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="11" placeholder="01xxxxxxxxx" required></label><button class="button button-primary">Track order</button></form>
+    <section class="track-intro"><p class="eyebrow">YOUR ORDER, STEP BY STEP</p><h1>Track your order</h1><p>Enter your mobile number to see all your orders, or enter one order number.</p>
+      <form class="track-form track-form-single" data-track-form><label>Mobile or order number<input name="query" inputmode="text" placeholder="01xxxxxxxxx or CC-123456" required></label><button class="button button-primary">Track order</button></form>
       <p class="track-error" data-track-error></p>
     </section>
-    <section class="tracking-result" data-tracking-result hidden>
-      <div class="order-meta"><div><small>ORDER NUMBER</small><b data-track-number></b></div><div><small>PLACED ON</small><b data-track-date></b></div><div><small>TOTAL</small><b data-track-total></b></div></div>
-      <div class="status-head"><span>Current status</span><b>Order confirmed</b></div>
-      <ol class="timeline">
-        <li class="done"><span>✓</span><div><b>Order confirmed</b><small>We received your order.</small></div></li>
-        <li><span>2</span><div><b>Preparing your order</b><small>Your Cura Care essentials are being packed.</small></div></li>
-        <li><span>3</span><div><b>Out for delivery</b><small>The courier is on the way.</small></div></li>
-        <li><span>4</span><div><b>Delivered</b><small>Your order has arrived.</small></div></li>
-      </ol>
-      <a class="button button-secondary" href="index.html">Continue shopping</a>
-    </section>
+    <div class="tracking-results" data-tracking-results></div>
   </main>
   <footer class="checkout-footer"><div class="container">© 2026 Cura Care <span>Designed & built by <a class="external-link" href="https://3mtechs.com" target="_blank" rel="noopener">3M Tech</a></span></div></footer>
   <script src="assets/js/track-order.js"></script>
