@@ -88,6 +88,16 @@ alter table public.store_settings enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
+drop policy if exists "Public reads active products" on public.products;
+drop policy if exists "Admins manage products" on public.products;
+drop policy if exists "Public reads variants" on public.product_variants;
+drop policy if exists "Admins manage variants" on public.product_variants;
+drop policy if exists "Public reads store settings" on public.store_settings;
+drop policy if exists "Admins manage settings" on public.store_settings;
+drop policy if exists "Admins read orders" on public.orders;
+drop policy if exists "Admins update orders" on public.orders;
+drop policy if exists "Admins read order items" on public.order_items;
+
 create policy "Public reads active products" on public.products for select to anon, authenticated using (is_active or public.is_admin());
 create policy "Admins manage products" on public.products for all to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy "Public reads variants" on public.product_variants for select to anon, authenticated using (exists(select 1 from public.products p where p.id=product_id and (p.is_active or public.is_admin())));
@@ -101,6 +111,10 @@ create policy "Admins read order items" on public.order_items for select to auth
 insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
 values ('payment-proofs','payment-proofs',false,5242880,array['image/jpeg','image/png'])
 on conflict(id) do nothing;
+
+drop policy if exists "Anyone uploads payment proof" on storage.objects;
+drop policy if exists "Admins read payment proofs" on storage.objects;
+
 create policy "Anyone uploads payment proof" on storage.objects for insert to anon, authenticated
 with check (bucket_id='payment-proofs' and (storage.foldername(name))[1]='incoming');
 create policy "Admins read payment proofs" on storage.objects for select to authenticated
