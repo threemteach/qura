@@ -1,32 +1,99 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Cura Care Admin</title><link rel="stylesheet" href="assets/css/styles.css"><link rel="stylesheet" href="assets/css/admin.css"><style>[hidden]{display:none!important}</style></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Cura Care Admin</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/admin.css">
+  <link rel="stylesheet" href="assets/css/admin-mobile.css">
+  <style>[hidden]{display:none!important}</style>
+</head>
 <body class="admin-page">
   <section class="admin-login" data-admin-login>
-    <form data-login-form><img src="assets/images/cura-care-logo.png" alt="Cura Care"><p class="eyebrow">STORE MANAGEMENT</p><h1>Admin sign in</h1><label>Email<input name="email" type="email" required></label><label>Password<input name="password" type="password" required></label><button class="button button-primary">Sign in</button><p data-login-error></p></form>
+    <form data-login-form>
+      <img src="assets/images/cura-care-logo.png" alt="Cura Care">
+      <p class="eyebrow">STORE MANAGEMENT</p>
+      <h1>Admin sign in</h1>
+      <label>Email<input name="email" type="email" required></label>
+      <label>Password<input name="password" type="password" required></label>
+      <button class="button button-primary">Sign in</button>
+      <p data-login-error></p>
+    </form>
   </section>
+
   <div class="admin-app" data-admin-app hidden>
-    <aside class="admin-sidebar"><a class="admin-brand" href="index.html"><img src="assets/images/cura-care-logo.png" alt=""><span>Cura Care<small>Admin</small></span></a><nav><button class="active" data-admin-tab="products">Products</button><button data-admin-tab="orders">Orders</button><button data-admin-tab="settings">Store settings</button></nav><button data-admin-logout>Sign out</button></aside>
+    <aside class="admin-sidebar">
+      <a class="admin-brand" href="index.html"><img src="assets/images/cura-care-logo.png" alt=""><span>Cura Care<small>Admin</small></span></a>
+      <nav><button class="active" data-admin-tab="products">Products</button><button data-admin-tab="orders">Orders</button><button data-admin-tab="settings">Store settings</button></nav>
+      <button data-admin-logout>Sign out</button>
+    </aside>
     <main class="admin-main">
       <header><div><p class="eyebrow">CURA CARE CONTROL</p><h1 data-admin-title>Products</h1></div><span data-admin-user></span></header>
       <section data-panel="products">
-        <div class="admin-toolbar"><input type="search" data-admin-search placeholder="Search products…"><button class="button button-primary" data-new-product>Add product</button></div>
-        <div class="admin-table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Flags</th><th>Sizes</th><th>Status</th><th></th></tr></thead><tbody data-products-table></tbody></table></div>
+        <div class="admin-toolbar">
+          <div class="admin-search"><input type="search" data-admin-search placeholder="Search products..."><span data-product-count>0 products</span></div>
+          <button class="button button-primary" data-new-product>+ Add product</button>
+        </div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Flags</th><th>Sizes & prices</th><th>Status</th><th></th></tr></thead><tbody data-products-table></tbody></table></div>
       </section>
       <section data-panel="orders" hidden><div class="admin-table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Payment</th><th>Total</th><th>Status</th></tr></thead><tbody data-orders-table></tbody></table></div></section>
       <section data-panel="settings" hidden>
-        <form class="settings-form" data-settings-form><div><label>Delivery fee<input name="delivery_fee" type="number" min="0"></label><label>Free delivery from<input name="free_delivery_from" type="number" min="0"></label></div><div><label>InstaPay account name<input name="instapay_name"></label><label>InstaPay address / phone<input name="instapay_address"></label></div><div><label>Vodafone Cash number<input name="vodafone_cash_number"></label><label>Payment note<textarea name="payment_note" rows="3"></textarea></label></div><button class="button button-primary">Save settings</button></form>
+        <form class="settings-form" data-settings-form>
+          <div><label>Delivery fee<input name="delivery_fee" type="number" min="0"></label><label>Free delivery from<input name="free_delivery_from" type="number" min="0"></label></div>
+          <div><label>InstaPay account name<input name="instapay_name"></label><label>InstaPay address / phone<input name="instapay_address"></label></div>
+          <div><label>Vodafone Cash number<input name="vodafone_cash_number"></label><label>Payment note<textarea name="payment_note" rows="3"></textarea></label></div>
+          <button class="button button-primary">Save settings</button>
+        </form>
       </section>
     </main>
   </div>
+
   <dialog class="product-dialog" data-product-dialog>
-    <form method="dialog" data-product-form><div class="dialog-head"><h2>Product details</h2><button value="cancel" aria-label="Close">×</button></div><input name="id" type="hidden">
-      <div class="admin-form-grid"><label>Product name<input name="name" required></label><label>Brand<input name="brand" required></label><label>Slug<input name="slug" required></label><label>Category<input name="category" required></label><label>Subcategory<input name="subcategory"></label><label>Image URL<input name="image_url" type="url"></label><label class="wide">Description<textarea name="description" rows="3"></textarea></label></div>
-      <div class="flag-row"><label><input name="is_active" type="checkbox" checked> Active</label><label><input name="is_bestseller" type="checkbox"> Best seller</label><label><input name="is_offer" type="checkbox"> Offer</label></div>
-      <div class="variants-head"><h3>Package sizes & prices</h3><button type="button" data-add-variant>Add size</button></div><div data-variant-rows></div>
-      <button class="button button-primary save-product" value="default">Save product</button><p data-product-error></p>
+    <form method="dialog" data-product-form>
+      <div class="dialog-head"><div><p class="eyebrow">PRODUCT EDITOR</p><h2>Product details</h2></div><button value="cancel" aria-label="Close">&times;</button></div>
+      <input name="id" type="hidden">
+      <section class="form-section">
+        <h3>Basic information</h3>
+        <div class="admin-form-grid">
+          <label class="wide">Product name<input name="name" required autocomplete="off"></label>
+          <label>Brand<input name="brand" required></label>
+          <label>Category<select name="category" required><option value="">Choose category</option><option value="skin">Skin care</option><option value="hair">Hair care</option><option value="body">Body care</option><option value="smile">Smile care</option><option value="baby">Baby & kids</option><option value="pads">Pads & tools</option><option value="sun">Sunscreens</option><option value="deodorant">Deodorant</option><option value="acne">Acne routines</option><option value="lash">Lashes & brows</option><option value="lip">Lip care</option><option value="nail">Nail care</option></select></label>
+          <label>Subcategory<input name="subcategory"></label>
+          <label class="wide">Image URL<input name="image_url" type="url" placeholder="https://..."></label>
+          <label class="wide">Description<textarea name="description" rows="3"></textarea></label>
+          <details class="wide"><summary>Advanced</summary><label>Product code (optional)<input name="slug" placeholder="Generated automatically"></label></details>
+        </div>
+      </section>
+      <section class="form-section">
+        <h3>Where should it appear?</h3>
+        <div class="flag-row"><label><input name="is_active" type="checkbox" checked><span>Active</span></label><label><input name="is_bestseller" type="checkbox"><span>Best seller</span></label><label><input name="is_offer" type="checkbox"><span>Offer</span></label></div>
+      </section>
+      <section class="form-section prices-section">
+        <div class="variants-head"><div><h3>Sizes, price & offer</h3><p>Enter the original price and discount. The final price is calculated for you.</p></div><button type="button" data-add-variant>+ Add size</button></div>
+        <div data-variant-rows></div>
+      </section>
+      <button class="button button-primary save-product" value="default">Save product</button>
+      <p data-product-error></p>
     </form>
   </dialog>
-  <template data-variant-template><div class="variant-row"><input data-v="label" placeholder="Size, e.g. 50 ml" required><input data-v="price" type="number" min="0" placeholder="Price" required><input data-v="old_price" type="number" min="0" placeholder="Old price"><input data-v="stock" type="number" min="0" placeholder="Stock"><button type="button" data-remove-variant>×</button></div></template>
-  <div class="toast" role="status" aria-live="polite"></div><script src="assets/js/admin.js"></script>
-</body></html>
+
+  <template data-variant-template>
+    <article class="variant-row">
+      <div class="variant-title"><strong>Package size</strong><button type="button" data-remove-variant aria-label="Remove size">&times;</button></div>
+      <div class="variant-grid">
+        <label class="variant-size">Size / package<input data-v="label" placeholder="Example: 50 ml" required></label>
+        <label>Original price<input data-original-price type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" required></label>
+        <label>Discount %<input data-discount type="number" min="0" max="99" step="1" inputmode="numeric" placeholder="0"></label>
+        <label>Price after offer<input data-v="price" data-final-price type="number" min="0" step="0.01" readonly></label>
+        <label>Available stock<input data-v="stock" type="number" min="0" inputmode="numeric" placeholder="0"></label>
+      </div>
+      <input data-v="old_price" type="hidden">
+      <div class="price-preview" data-price-preview>No offer applied</div>
+    </article>
+  </template>
+  <div class="toast" role="status" aria-live="polite"></div>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>
