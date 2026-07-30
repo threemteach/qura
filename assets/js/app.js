@@ -3,10 +3,22 @@
   const money = value => `EGP ${value.toLocaleString("en-EG")}`;
   const $ = selector => document.querySelector(selector);
   const cart = JSON.parse(localStorage.getItem("curaCart") || "[]");
+  const wishlist = JSON.parse(localStorage.getItem("curaWishlist") || "[]");
   let activeFilter = "all";
   let activeSubFilter = "all";
   let activeSort = "featured";
   let searchQuery = "";
+  const findProduct = id => data.products.find(product => String(product.id) === String(id));
+
+  const variantsFor = product => {
+    const remote = product.product_variants || product.variants;
+    if (remote?.length) return remote.map(variant => ({ id: variant.id || variant.label, label: variant.label, price: Number(variant.price), oldPrice: variant.old_price ?? variant.oldPrice }));
+    const unit = ["body", "hair", "baby", "sun"].includes(product.category) ? "ml" : "g";
+    return [
+      { id: `${product.id}-small`, label: `50 ${unit}`, price: product.price, oldPrice: product.oldPrice },
+      { id: `${product.id}-large`, label: `100 ${unit}`, price: Math.round(product.price * 1.65), oldPrice: product.oldPrice ? Math.round(product.oldPrice * 1.65) : null }
+    ];
+  };
 
   function renderMainFilters() {
     const filters = [{ id: "all", name: "All products", icon: "✦" }, ...data.categories];
@@ -35,15 +47,18 @@
   }
 
   function productCard(product) {
+    const variants = variantsFor(product);
+    const selected = variants[0];
     return `<article class="product-card">
       <div class="product-image">
         <img src="${product.image}" alt="${product.name}" loading="lazy">
         ${product.badge ? `<span class="badge">${product.badge}</span>` : ""}
-        <button class="wish" type="button" aria-label="Add ${product.name} to wishlist">♡</button>
+        <button class="wish${wishlist.includes(product.id) ? " active" : ""}" data-wish="${product.id}" type="button" aria-label="Add ${product.name} to wishlist">${wishlist.includes(product.id) ? "♥" : "♡"}</button>
       </div>
       <div class="product-info"><small>${product.brand}</small><h3>${product.name}</h3>
         <div class="rating" aria-label="Rated 4.8 out of 5">★★★★★ <span>4.8</span></div>
-        <div class="price"><b>${money(product.price)}</b>${product.oldPrice ? `<s>${money(product.oldPrice)}</s>` : ""}</div>
+        <label class="variant-picker"><span>Size</span><select data-variant>${variants.map((variant, index) => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}"${index === 0 ? " selected" : ""}>${variant.label}</option>`).join("")}</select></label>
+        <div class="price"><b>${money(selected.price)}</b>${selected.oldPrice ? `<s>${money(selected.oldPrice)}</s>` : ""}</div>
         <button class="button button-secondary add-cart" data-add="${product.id}" type="button">Add to bag</button>
       </div>
     </article>`;
@@ -107,10 +122,11 @@
     localStorage.setItem("curaCart", JSON.stringify(cart));
     document.querySelectorAll("[data-cart-count]").forEach(el => el.textContent = cart.reduce((sum, item) => sum + item.qty, 0));
     $("[data-cart-items]").innerHTML = cart.length ? cart.map(item => {
-      const product = data.products.find(p => p.id === item.id);
-      return `<div class="cart-item"><img src="${product.image}" alt=""><div><b>${product.name}</b><small>${money(product.price)} × ${item.qty}</small></div><button data-remove="${item.id}" aria-label="Remove ${product.name}">×</button></div>`;
+      const product = findProduct(item.id);
+      if (!product) return "";
+      return `<div class="cart-item"><img src="${product.image}" alt=""><div><b>${product.name}</b><small>${item.variantLabel || "Standard"} · ${money(item.price || product.price)} × ${item.qty}</small></div><button data-remove-key="${item.key || item.id}" aria-label="Remove ${product.name}">×</button></div>`;
     }).join("") : `<p class="cart-empty">Your bag is waiting for something lovely.</p>`;
-    const total = cart.reduce((sum, item) => sum + data.products.find(p => p.id === item.id).price * item.qty, 0);
+    const total = cart.reduce((sum, item) => sum + (item.price || findProduct(item.id)?.price || 0) * item.qty, 0);
     $("[data-cart-total]").textContent = money(total);
   }
 
@@ -134,7 +150,7 @@
     const filter = event.target.closest("[data-filter]");
     const subFilter = event.target.closest("[data-sub-filter]");
     const add = event.target.closest("[data-add]");
-    const remove = event.target.closest("[data-remove]");
+    const remove = event.target.closest("[data-remove-key]");
     const shelfView = event.target.closest("[data-shelf-view]");
     const productFocus = event.target.closest("[data-product-focus]");
     const shortcut = event.target.closest("[data-shortcut]");
@@ -155,7 +171,7 @@
       $("#products").scrollIntoView({ behavior: "smooth" });
     }
     if (productFocus && !add) {
-      const product = data.products.find(item => item.id === Number(productFocus.dataset.productFocus));
+      const product = findProduct(productFocus.dataset.productFocus);
       applyFilter(product.category);
       applySearch(product.name);
       $("#products").scrollIntoView({ behavior: "smooth" });
@@ -186,13 +202,18 @@
       $("#products").scrollIntoView({ behavior: "smooth" });
     }
     if (add) {
-      const id = Number(add.dataset.add);
-      const item = cart.find(i => i.id === id);
-      item ? item.qty++ : cart.push({ id, qty: 1 });
+      const id = add.dataset.add;
+      const card = add.closest(".product-card");
+      const select = card?.querySelector("[data-variant]");
+      const option = select?.selectedOptions[0];
+      const variantId = option?.value || `${id}-default`;
+      const key = `${id}:${variantId}`;
+      const item = cart.find(i => (i.key || `${i.id}:legacy`) === key);
+      item ? item.qty++ : cart.push({ id, key, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: 1 });
       saveCart(); toast("Added to your bag");
     }
     if (remove) {
-      cart.splice(cart.findIndex(i => i.id === Number(remove.dataset.remove)), 1);
+      cart.splice(cart.findIndex(i => String(i.key || i.id) === remove.dataset.removeKey), 1);
       saveCart();
     }
     if (event.target.closest(".menu-button")) showLayer("menu", true);
@@ -206,11 +227,17 @@
     if (event.target.closest(".drawer a") && !event.target.closest("[data-open-cart]")) showLayer("menu", false);
     if (event.target.closest(".cart-head button")) showLayer("cart", false);
     if (event.target === $(".overlay")) { showLayer("menu", false); showLayer("cart", false); }
-    if (event.target.closest(".wish")) {
+    if (event.target.closest("[data-wish]")) {
       const button = event.target.closest(".wish");
-      button.classList.toggle("active");
-      button.textContent = button.classList.contains("active") ? "♥" : "♡";
-      toast(button.classList.contains("active") ? "Saved to wishlist" : "Removed from wishlist");
+      const rawId = button.dataset.wish;
+      const id = findProduct(rawId)?.id ?? rawId;
+      const index = wishlist.findIndex(item => String(item) === String(id));
+      index >= 0 ? wishlist.splice(index, 1) : wishlist.push(id);
+      localStorage.setItem("curaWishlist", JSON.stringify(wishlist));
+      button.classList.toggle("active", index < 0);
+      button.textContent = index < 0 ? "♥" : "♡";
+      document.querySelectorAll("[data-wishlist-count]").forEach(el => el.textContent = wishlist.length);
+      toast(index < 0 ? "Saved to wishlist" : "Removed from wishlist");
     }
     if (event.target.closest("[data-mobile-filter-toggle]")) {
       const sidebar = $(".catalog-sidebar");
@@ -234,6 +261,14 @@
     activeSort = event.target.value;
     renderProducts();
   });
+  document.addEventListener("change", event => {
+    if (!event.target.matches("[data-variant]")) return;
+    const card = event.target.closest(".product-card");
+    const option = event.target.selectedOptions[0];
+    card.querySelector(".price b").textContent = money(Number(option.dataset.price));
+    const old = card.querySelector(".price s");
+    if (old) old.textContent = option.dataset.oldPrice ? money(Number(option.dataset.oldPrice)) : "";
+  });
   $("[data-product-search]").addEventListener("input", event => applySearch(event.target.value));
   $("[data-header-search]").addEventListener("submit", event => {
     event.preventDefault();
@@ -253,4 +288,14 @@
   renderShelves();
   renderProducts();
   saveCart();
+  document.querySelectorAll("[data-wishlist-count]").forEach(el => el.textContent = wishlist.length);
+  fetch("/api/catalog").then(response => response.ok ? response.json() : Promise.reject()).then(payload => {
+    if (!payload.products?.length) return;
+    data.products = payload.products.map(product => {
+      const variants = product.product_variants?.sort((a, b) => a.sort_order - b.sort_order) || [];
+      const base = variants.find(variant => variant.is_default) || variants[0] || {};
+      return { ...product, image: product.image_url, price: Number(base.price || 0), oldPrice: base.old_price ? Number(base.old_price) : null, badge: product.badge || (product.is_bestseller ? "BESTSELLER" : product.is_offer ? "SALE" : ""), featured: product.is_bestseller, product_variants: variants };
+    });
+    renderMainFilters(); renderSubFilters(); renderShelves(); renderProducts(); saveCart();
+  }).catch(() => {});
 })();

@@ -1,0 +1,12 @@
+{
+  "name": "cura-care",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "check": "node --check assets/js/app.js && node --check assets/js/admin.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4"
+  }
+}
