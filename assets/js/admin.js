@@ -236,6 +236,7 @@
       $("[data-admin-title]").textContent = tab.textContent;
     }
     if (event.target.closest("[data-new-product]")) openProduct();
+    if (event.target.closest("[data-close-product]")) $("[data-product-dialog]").close();
     const edit = event.target.closest("[data-edit-product]");
     if (edit) openProduct(state.products.find(product => product.id === edit.dataset.editProduct));
     const remove = event.target.closest("[data-delete-product]");
