@@ -38,7 +38,11 @@ export default async function handler(req, res) {
       if (error) throw error;
       await db.from("product_variants").delete().eq("product_id", id);
       if (variants.length) {
-        const { error: variantError } = await db.from("product_variants").insert(variants.map((variant, index) => ({ ...variant, id: undefined, product_id: id, sort_order: index })));
+        const cleanVariants = variants.map((variant, index) => {
+          const { id: ignoredId, ...cleanVariant } = variant;
+          return { ...cleanVariant, product_id: id, sort_order: index };
+        });
+        const { error: variantError } = await db.from("product_variants").insert(cleanVariants);
         if (variantError) throw variantError;
       }
       return json(res, 200, { ok: true });

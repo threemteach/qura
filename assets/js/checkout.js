@@ -56,13 +56,22 @@
   });
   document.querySelector("[data-remove-proof]").addEventListener("click", () => { proofData = ""; upload.value = ""; document.querySelector("[data-proof-preview]").hidden = true; document.querySelector(".upload-box").hidden = false; });
   const form = document.querySelector("[data-checkout-form]");
+  const validationSummary = document.querySelector("[data-checkout-errors]");
   const phoneInput = form.elements.phone;
   phoneInput.addEventListener("input", () => {
     phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 11);
   });
+  form.addEventListener("input", event => {
+    if (!event.target.matches("input, select, textarea")) return;
+    event.target.removeAttribute("aria-invalid");
+    const error = event.target.parentElement.querySelector("small");
+    if (error) error.textContent = "";
+  });
   form.addEventListener("submit", async event => {
     event.preventDefault(); let valid = true;
     let firstInvalid = null;
+    const validationMessages = [];
+    validationSummary.hidden = true;
     form.querySelectorAll("[required]:not([type=radio])").forEach(field => {
       const value = field.value.trim();
       const error = field.parentElement.querySelector("small");
@@ -74,13 +83,31 @@
       if (field.name === "area" && value && value.length < 2) message = "Enter your area.";
       field.setAttribute("aria-invalid", String(Boolean(message)));
       if (error) error.textContent = message;
-      if (message) { valid = false; firstInvalid ||= field; }
+      if (message) {
+        valid = false;
+        firstInvalid ||= field;
+        const label = field.closest("label")?.childNodes[0]?.textContent?.trim() || field.name;
+        validationMessages.push(`${label}: ${message}`);
+      }
     });
     const payment = form.querySelector("[name=payment]:checked");
-    if (!payment) { document.querySelector("[data-payment-error]").textContent = "Choose a payment method."; valid = false; }
-    else if (payment.value !== "cod" && !proofData) { document.querySelector("[data-proof-error]").textContent = "Upload your payment screenshot."; valid = false; }
-    if (!products.length) valid = false;
+    if (!payment) {
+      document.querySelector("[data-payment-error]").textContent = "Choose a payment method.";
+      validationMessages.push("Payment: choose a payment method.");
+      valid = false;
+    } else if (payment.value !== "cod" && !proofData) {
+      document.querySelector("[data-proof-error]").textContent = "Upload your payment screenshot.";
+      validationMessages.push("Payment proof: upload the transfer screenshot.");
+      valid = false;
+    }
+    if (!products.length) {
+      validationMessages.push("Your bag is empty.");
+      valid = false;
+    }
     if (!valid) {
+      validationSummary.innerHTML = `<b>Please complete the following:</b><ul>${[...new Set(validationMessages)].map(message => `<li>${message}</li>`).join("")}</ul>`;
+      validationSummary.hidden = false;
+      if (!firstInvalid) validationSummary.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid?.focus();
       firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
