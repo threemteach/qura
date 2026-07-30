@@ -221,8 +221,9 @@ footer { padding-top: 64px; background: #24172a; color: #f9f3f8; }
 }
 @media (max-width: 991px) {
   .desktop-nav { display: none; }
-  .menu-button { display: block; }
-  .brand { margin-right: auto; }
+  .brand { order: 1; margin-right: auto; }
+  .header-actions { order: 2; }
+  .menu-button { display: block; order: 3; }
   .header-search { width: min(32vw, 230px); }
   .hero { grid-template-columns: .9fr 1.1fr; min-height: 500px; gap: 28px; }
   .care-shortcuts { gap: 10px; }
