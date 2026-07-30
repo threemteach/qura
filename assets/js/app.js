@@ -56,7 +56,7 @@
       <div class="product-info"><small>${product.brand}</small><h3>${product.name}</h3>
         <div class="rating" aria-label="Rated 4.8 out of 5">★★★★★ <span>4.8</span></div>
         <label class="variant-picker"><span>Size</span><select data-variant>${variants.map((variant, index) => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}"${index === 0 ? " selected" : ""}>${variant.label}</option>`).join("")}</select></label>
-        <div class="price"><b>${money(selected.price)}</b>${selected.oldPrice ? `<s>${money(selected.oldPrice)}</s>` : ""}</div>
+        <div class="price"><b>${money(selected.price)}</b><s${selected.oldPrice ? "" : " hidden"}>${selected.oldPrice ? money(selected.oldPrice) : ""}</s></div>
         <div class="product-actions"><button class="button button-secondary add-cart" data-add="${product.id}" type="button">Add to bag</button><button class="button button-primary buy-now" data-buy-now="${product.id}" type="button">Buy now</button></div>
       </div>
     </article>`;
@@ -122,7 +122,7 @@
     $("[data-cart-items]").innerHTML = cart.length ? cart.map(item => {
       const product = findProduct(item.id);
       if (!product) return "";
-      return `<div class="cart-item"><img src="${product.image}" alt=""><div><b>${product.name}</b><small>${item.variantLabel || "Standard"} · ${money(item.price || product.price)} × ${item.qty}</small></div><button data-remove-key="${item.key || item.id}" aria-label="Remove ${product.name}">×</button></div>`;
+      return `<div class="cart-item"><img src="${product.image}" alt=""><div><b>${product.name}</b><small>${item.variantLabel || "Standard"} · ${money(item.price || product.price)}</small><div class="cart-quantity"><button data-quantity="minus" data-key="${item.key || item.id}" type="button" aria-label="Reduce quantity">−</button><span>${item.qty}</span><button data-quantity="plus" data-key="${item.key || item.id}" type="button" aria-label="Increase quantity">+</button></div></div><button class="cart-remove" data-remove-key="${item.key || item.id}" aria-label="Remove ${product.name}">×</button></div>`;
     }).join("") : `<p class="cart-empty">Your bag is waiting for something lovely.</p>`;
     const total = cart.reduce((sum, item) => sum + (item.price || findProduct(item.id)?.price || 0) * item.qty, 0);
     $("[data-cart-total]").textContent = money(total);
@@ -150,6 +150,7 @@
     const add = event.target.closest("[data-add]");
     const buyNow = event.target.closest("[data-buy-now]");
     const remove = event.target.closest("[data-remove-key]");
+    const quantity = event.target.closest("[data-quantity]");
     const shelfView = event.target.closest("[data-shelf-view]");
     const productFocus = event.target.closest("[data-product-focus]");
     const shortcut = event.target.closest("[data-shortcut]");
@@ -225,6 +226,14 @@
       cart.splice(cart.findIndex(i => String(i.key || i.id) === remove.dataset.removeKey), 1);
       saveCart();
     }
+    if (quantity) {
+      const item = cart.find(entry => String(entry.key || entry.id) === quantity.dataset.key);
+      if (item) {
+        quantity.dataset.quantity === "plus" ? item.qty++ : item.qty--;
+        if (item.qty <= 0) cart.splice(cart.indexOf(item), 1);
+        saveCart();
+      }
+    }
     if (event.target.closest(".menu-button")) showLayer("menu", true);
     if (event.target.closest(".cart-button")) showLayer("cart", true);
     if (event.target.closest("[data-open-cart]")) {
@@ -264,7 +273,8 @@
     const option = event.target.selectedOptions[0];
     card.querySelector(".price b").textContent = money(Number(option.dataset.price));
     const old = card.querySelector(".price s");
-    if (old) old.textContent = option.dataset.oldPrice ? money(Number(option.dataset.oldPrice)) : "";
+    old.hidden = !option.dataset.oldPrice;
+    old.textContent = option.dataset.oldPrice ? money(Number(option.dataset.oldPrice)) : "";
   });
   $("[data-product-search]").addEventListener("input", event => applySearch(event.target.value));
   $("[data-header-search]").addEventListener("submit", event => {
