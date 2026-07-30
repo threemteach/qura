@@ -12,7 +12,7 @@
   <header class="checkout-header"><div class="container"><a class="brand" href="index.html"><img src="assets/images/cura-care-logo.png" alt=""><span>CURA CARE<small>HIDDEN INSIDE</small></span></a><span>Order tracking</span><a href="index.html">← Home</a></div></header>
   <main class="track-shell container">
     <section class="track-intro"><p class="eyebrow">YOUR ORDER, STEP BY STEP</p><h1>Track your order</h1><p>Enter your order number and phone number to see the latest status.</p>
-      <form class="track-form" data-track-form><label>Order number<input name="order" placeholder="CC-123456" required></label><label>Phone number<input name="phone" inputmode="tel" placeholder="01xxxxxxxxx" required></label><button class="button button-primary">Track order</button></form>
+      <form class="track-form" data-track-form><label>Order number<input name="order" placeholder="CC-123456" required></label><label>Phone number<input name="phone" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="11" placeholder="01xxxxxxxxx" required></label><button class="button button-primary">Track order</button></form>
       <p class="track-error" data-track-error></p>
     </section>
     <section class="tracking-result" data-tracking-result hidden>
