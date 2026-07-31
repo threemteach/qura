@@ -306,8 +306,20 @@
   renderProducts();
   saveCart();
   fetch("/api/catalog").then(response => response.ok ? response.json() : Promise.reject()).then(payload => {
-    if (!payload.products?.length) return;
-    data.products = payload.products.map(product => {
+    const savedCategories = payload.settings?.catalog_categories;
+    if (Array.isArray(savedCategories) && savedCategories.length) {
+      data.categories = savedCategories.map(category => {
+        const existing = data.categories.find(item => item.id === category.id);
+        return {
+          id: category.id,
+          name: category.label || existing?.name || category.id,
+          subtitle: existing?.subtitle || "Explore products in this category",
+          icon: existing?.icon || "✦",
+          subs: Array.isArray(category.subcategories) ? category.subcategories : []
+        };
+      });
+    }
+    if (Array.isArray(payload.products)) data.products = payload.products.map(product => {
       const variants = product.product_variants?.sort((a, b) => a.sort_order - b.sort_order) || [];
       const base = variants.find(variant => variant.is_default) || variants[0] || {};
       return { ...product, image: product.image_url, price: Number(base.price || 0), oldPrice: base.old_price ? Number(base.old_price) : null, badge: product.badge || (product.is_bestseller ? "BESTSELLER" : product.is_offer ? "SALE" : ""), featured: product.is_bestseller, product_variants: variants };
