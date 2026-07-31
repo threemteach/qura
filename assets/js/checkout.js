@@ -28,8 +28,10 @@
   governorateSelect.innerHTML = `<option value="">Choose governorate</option>${governorates.map(name => `<option>${name}</option>`).join("")}`;
   const updateDelivery = () => {
     const customRate = rates.find(rate => rate.governorate === governorateSelect.value);
-    delivery = products.length ? Number(customRate?.fee ?? settings.delivery_fee ?? 0) : 0;
-    deliveryOutput.textContent = money(delivery);
+    const freeDeliveryFrom = Number(settings.free_delivery_from || 0);
+    const qualifiesForFreeDelivery = freeDeliveryFrom > 0 && subtotal >= freeDeliveryFrom;
+    delivery = products.length && !qualifiesForFreeDelivery ? Number(customRate?.fee ?? settings.delivery_fee ?? 0) : 0;
+    deliveryOutput.textContent = qualifiesForFreeDelivery ? "Free" : money(delivery);
     totalOutput.textContent = money(subtotal + delivery);
   };
   governorateSelect.addEventListener("change", updateDelivery);
