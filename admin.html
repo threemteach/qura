@@ -57,7 +57,9 @@
           <h2>Delivery price by governorate</h2><p class="form-help">Choose a governorate and set its delivery fee. Any unlisted governorate uses the default fee above.</p>
           <div><label>Governorate<select name="governorate" data-governorate-select required></select></label><label>Delivery fee<input name="fee" type="number" min="0" required></label></div>
           <button class="button button-primary">Add / update price</button>
+          <p class="form-help" data-delivery-status role="status" aria-live="polite"></p>
           <div class="delivery-rates" data-delivery-rates></div>
+          <div class="delivery-history"><h3>Recent price changes</h3><div data-delivery-history></div></div>
         </form>
       </section>
     </main>

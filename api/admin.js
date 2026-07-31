@@ -13,14 +13,15 @@ export default async function handler(req, res) {
     const db = await requireAdmin(req);
     const action = req.query.action || req.body?.action;
     if (req.method === "GET" && action === "dashboard") {
-      const [products, orders, settings] = await Promise.all([
+      const [products, orders, settings, deliveryHistory] = await Promise.all([
         db.from("products").select("*, product_variants(*)").order("sort_order"),
         db.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }).limit(100),
-        db.from("store_settings").select("*").eq("id", 1).single()
+        db.from("store_settings").select("*").eq("id", 1).single(),
+        db.from("delivery_rate_history").select("*").order("created_at", { ascending: false }).limit(30)
       ]);
       const error = products.error || orders.error || settings.error;
       if (error) throw error;
-      return json(res, 200, { products: products.data, orders: orders.data, settings: settings.data });
+      return json(res, 200, { products: products.data, orders: orders.data, settings: settings.data, deliveryHistory: deliveryHistory.data || [] });
     }
     if (req.method === "GET" && action === "payment-proof") {
       const path = String(req.query.path || "");
@@ -95,6 +96,23 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true });
     }
     if (req.method === "PATCH" && action === "settings") {
+      if (Array.isArray(req.body.settings?.delivery_rates)) {
+        const { data: current, error: currentError } = await db.from("store_settings").select("delivery_rates").eq("id", 1).single();
+        if (currentError) throw currentError;
+        const before = Array.isArray(current.delivery_rates) ? current.delivery_rates : [];
+        const after = req.body.settings.delivery_rates;
+        const names = new Set([...before, ...after].map(rate => rate.governorate));
+        const changes = [...names].map(governorate => {
+          const oldRate = before.find(rate => rate.governorate === governorate);
+          const newRate = after.find(rate => rate.governorate === governorate);
+          if (Number(oldRate?.fee) === Number(newRate?.fee) && Boolean(oldRate) === Boolean(newRate)) return null;
+          return { governorate, old_fee: oldRate?.fee ?? null, new_fee: newRate?.fee ?? null };
+        }).filter(Boolean);
+        if (changes.length) {
+          const { error: historyError } = await db.from("delivery_rate_history").insert(changes);
+          if (historyError) throw historyError;
+        }
+      }
       const { error } = await db.from("store_settings").update({ ...req.body.settings, updated_at: new Date().toISOString() }).eq("id", 1);
       if (error) throw error;
       return json(res, 200, { ok: true });

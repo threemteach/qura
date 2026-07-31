@@ -9,7 +9,7 @@
     { id: "lip", label: "Lip care", subcategories: [] }, { id: "nail", label: "Nail care", subcategories: [] }
   ];
   const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
-  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, uploadingImage: false, loadedOnce: false };
+  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, loadedOnce: false };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -125,6 +125,7 @@
   function renderDeliveryRates() {
     $("[data-governorate-select]").innerHTML = `<option value="">Choose governorate</option>${GOVERNORATES.map(name => `<option>${name}</option>`).join("")}`;
     $("[data-delivery-rates]").innerHTML = deliveryRates().map(rate => `<div class="delivery-rate"><span>${escapeHtml(rate.governorate)}</span><b>${money(rate.fee)}</b><button type="button" data-remove-rate="${escapeHtml(rate.governorate)}">Delete</button></div>`).join("") || "<p class=\"form-help\">No custom prices yet. The default delivery fee is used.</p>";
+    $("[data-delivery-history]").innerHTML = (state.deliveryHistory || []).map(entry => `<div class="delivery-history-row"><span><b>${escapeHtml(entry.governorate)}</b><small>${new Date(entry.created_at).toLocaleString()}</small></span><span>${entry.old_fee == null ? "Not set" : money(entry.old_fee)} → ${entry.new_fee == null ? "Deleted" : money(entry.new_fee)}</span></div>`).join("") || '<p class="form-help">No price changes recorded yet.</p>';
   }
 
   function calculateVariant(row) {
@@ -362,8 +363,20 @@
     event.preventDefault();
     const governorate = event.target.governorate.value;
     const fee = Math.max(0, Number(event.target.fee.value || 0));
+    const status = $("[data-delivery-status]");
+    if (!governorate || !Number.isFinite(fee)) return;
     const next = [...deliveryRates().filter(rate => rate.governorate !== governorate), { governorate, fee }].sort((a, b) => a.governorate.localeCompare(b.governorate));
-    await persistSettings({ delivery_rates: next }); event.target.reset(); renderDeliveryRates(); toast("Delivery price saved");
+    status.textContent = "Saving...";
+    try {
+      await persistSettings({ delivery_rates: next });
+      event.target.reset();
+      await load();
+      status.textContent = "Delivery price saved successfully.";
+      toast("Delivery price saved");
+    } catch (error) {
+      status.textContent = error.message.includes("delivery_rates") ? "Database setup is incomplete. Run the latest SQL migration in Supabase." : error.message;
+      toast("Could not save delivery price");
+    }
   });
 
   $("[data-product-form]").addEventListener("submit", async event => {
