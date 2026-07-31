@@ -36,6 +36,8 @@
   updateDelivery();
   document.querySelector("[data-summary-empty]").hidden = products.length > 0;
   let proofData = "";
+  let uploadedProofPath = null;
+  let proofProcessing = false;
   const paymentProof = document.querySelector("[data-payment-proof]");
   const codNote = document.querySelector("[data-cod-note]");
   document.querySelectorAll("[name=payment]").forEach(input => input.addEventListener("change", () => {
@@ -47,14 +49,45 @@
     document.querySelector("[data-payment-error]").textContent = "";
   }));
   const upload = document.querySelector("#proof-upload");
-  upload.addEventListener("change", () => {
-    const file = upload.files[0]; if (!file) return;
-    if (file.size > 4 * 1024 * 1024) { document.querySelector("[data-proof-error]").textContent = "Image must be smaller than 4 MB."; upload.value = ""; return; }
-    const reader = new FileReader();
-    reader.onload = event => { proofData = event.target.result; document.querySelector("[data-proof-preview] img").src = proofData; document.querySelector("[data-proof-preview]").hidden = false; document.querySelector(".upload-box").hidden = true; document.querySelector("[data-proof-error]").textContent = ""; };
-    reader.readAsDataURL(file);
+  const prepareProof = file => new Promise((resolve, reject) => {
+    if (!file?.type.startsWith("image/")) return reject(new Error("Choose a valid screenshot."));
+    if (file.size > 15 * 1024 * 1024) return reject(new Error("The original image must be smaller than 15 MB."));
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      const maximum = 1600;
+      const scale = Math.min(1, maximum / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/jpeg", 0.78));
+    };
+    image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("This image could not be read. Try another screenshot.")); };
+    image.src = objectUrl;
   });
-  document.querySelector("[data-remove-proof]").addEventListener("click", () => { proofData = ""; upload.value = ""; document.querySelector("[data-proof-preview]").hidden = true; document.querySelector(".upload-box").hidden = false; });
+  upload.addEventListener("change", async () => {
+    const file = upload.files[0]; if (!file) return;
+    const proofError = document.querySelector("[data-proof-error]");
+    proofProcessing = true;
+    proofError.textContent = "Preparing image...";
+    uploadedProofPath = null;
+    try {
+      proofData = await prepareProof(file);
+      document.querySelector("[data-proof-preview] img").src = proofData;
+      document.querySelector("[data-proof-preview]").hidden = false;
+      document.querySelector(".upload-box").hidden = true;
+      proofError.textContent = "Screenshot ready.";
+    } catch (error) {
+      proofData = "";
+      upload.value = "";
+      proofError.textContent = error.message;
+    } finally {
+      proofProcessing = false;
+    }
+  });
+  document.querySelector("[data-remove-proof]").addEventListener("click", () => { proofData = ""; uploadedProofPath = null; upload.value = ""; document.querySelector("[data-proof-preview]").hidden = true; document.querySelector(".upload-box").hidden = false; document.querySelector("[data-proof-error]").textContent = ""; });
   const form = document.querySelector("[data-checkout-form]");
   const validationSummary = document.querySelector("[data-checkout-errors]");
   const phoneInput = form.elements.phone;
@@ -95,6 +128,10 @@
       document.querySelector("[data-payment-error]").textContent = "Choose a payment method.";
       validationMessages.push("Payment: choose a payment method.");
       valid = false;
+    } else if (payment.value !== "cod" && proofProcessing) {
+      document.querySelector("[data-proof-error]").textContent = "Wait a moment while the screenshot is prepared.";
+      validationMessages.push("Payment proof: wait for image preparation to finish.");
+      valid = false;
     } else if (payment.value !== "cod" && !proofData) {
       document.querySelector("[data-proof-error]").textContent = "Upload your payment screenshot.";
       validationMessages.push("Payment proof: upload the transfer screenshot.");
@@ -114,10 +151,14 @@
     }
     const button = form.querySelector(".place-order"); button.disabled = true; button.textContent = "Placing order…";
     try {
-      let proofPath = null;
+      let proofPath = uploadedProofPath;
       if (payment.value !== "cod") {
-        const proofResponse = await fetch("/api/payment-proof", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl: proofData }) });
-        const proof = await proofResponse.json(); if (!proofResponse.ok) throw new Error(proof.error); proofPath = proof.path;
+        if (!proofPath) {
+          const proofResponse = await fetch("/api/payment-proof", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl: proofData }) });
+          const proof = await proofResponse.json(); if (!proofResponse.ok) throw new Error(proof.error);
+          proofPath = proof.path;
+          uploadedProofPath = proofPath;
+        }
       }
       const payload = { customer: { name: form.elements.name.value, phone: form.elements.phone.value.replace(/\s/g, ""), email: form.elements.email.value, address: form.elements.address.value, city: form.elements.city.value, area: form.elements.area.value, notes: form.elements.notes.value }, items: cart.map(item => ({ variant_id: item.variantId, quantity: item.qty })), payment_method: payment.value, payment_proof_path: proofPath };
       const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
