@@ -306,6 +306,13 @@
   renderProducts();
   saveCart();
   fetch("/api/catalog").then(response => response.ok ? response.json() : Promise.reject()).then(payload => {
+    const freeDeliveryMessage = $("[data-free-delivery-message]");
+    const freeDeliveryFrom = Number(payload.settings?.free_delivery_from || 0);
+    if (freeDeliveryMessage) {
+      freeDeliveryMessage.textContent = freeDeliveryFrom > 0
+        ? `Free delivery on orders from ${money(freeDeliveryFrom)}`
+        : "Delivery available across Egypt";
+    }
     const savedCategories = payload.settings?.catalog_categories;
     if (Array.isArray(savedCategories) && savedCategories.length) {
       data.categories = savedCategories.map(category => {
