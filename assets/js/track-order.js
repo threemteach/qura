@@ -8,9 +8,11 @@
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 
   function render(orders) {
-    const stages = ["checking", "preparing", "out_for_delivery", "delivered"];
     results.innerHTML = orders.map(order => {
-      const status = order.status === "confirmed" ? "checking" : (order.status || "checking");
+      const cashOnDelivery = order.payment_method === "cod";
+      const firstStage = cashOnDelivery ? "confirmed" : "checking";
+      const stages = [firstStage, "preparing", "out_for_delivery", "delivered"];
+      const status = order.status || firstStage;
       const current = Math.max(0, stages.indexOf(status));
       const statusNote = status === "on_hold" ? '<p class="tracking-notice">This order is temporarily on hold. The store will contact you if more information is needed.</p>' : status === "cancelled" ? '<p class="tracking-notice cancelled">This order has been cancelled.</p>' : "";
       return `<section class="tracking-result">
@@ -18,7 +20,7 @@
         <div class="status-head"><span>Current status</span><b>${escapeHtml(status.replaceAll("_", " "))}</b></div>
         ${statusNote}
         <ol class="timeline">
-          <li class="${current >= 0 ? "done" : ""}"><span>✓</span><div><b>Checking payment</b><small>We received your order and will review the payment receipt.</small></div></li>
+          <li class="${current >= 0 ? "done" : ""}"><span>✓</span><div><b>${cashOnDelivery ? "Order confirmed" : "Checking payment"}</b><small>${cashOnDelivery ? "We received your cash-on-delivery order." : "We received your order and will review the payment receipt."}</small></div></li>
           <li class="${current >= 1 ? "done" : ""}"><span>2</span><div><b>Preparing your order</b><small>Your order is being packed.</small></div></li>
           <li class="${current >= 2 ? "done" : ""}"><span>3</span><div><b>Out for delivery</b><small>The courier is on the way.</small></div></li>
           <li class="${current >= 3 ? "done" : ""}"><span>4</span><div><b>Delivered</b><small>Your order has arrived.</small></div></li>

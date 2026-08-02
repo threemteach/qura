@@ -89,7 +89,7 @@
         <td data-label="Customer">${escapeHtml(order.customer_name)}<small>${escapeHtml(order.phone)}</small></td>
         <td data-label="Payment">${escapeHtml(order.payment_method)}${order.payment_proof_path ? `<div class="proof-actions"><button class="proof-link" data-view-proof="${escapeHtml(order.payment_proof_path)}">View</button><button class="proof-link" data-download-proof="${escapeHtml(order.payment_proof_path)}">Download</button><button class="proof-delete" data-delete-proof="${order.id}">Delete</button></div>` : ""}</td>
         <td data-label="Total">${money(order.total)}</td>
-        <td data-label="Status"><select class="status-select" data-order-status="${order.id}">${["checking", "preparing", "on_hold", "out_for_delivery", "delivered", "cancelled"].map(status => `<option value="${status}"${status === order.status ? " selected" : ""}>${status === "checking" ? "checking payment" : status.replaceAll("_", " ")}</option>`).join("")}</select>${["delivered", "cancelled"].includes(order.status) ? `<button class="delete-completed" data-delete-order="${order.id}">Delete order</button>` : ""}</td>
+        <td data-label="Status"><select class="status-select" data-order-status="${order.id}">${["checking", "confirmed", "preparing", "on_hold", "out_for_delivery", "delivered", "cancelled"].map(status => `<option value="${status}"${status === order.status ? " selected" : ""}>${status === "checking" ? "checking payment" : status.replaceAll("_", " ")}</option>`).join("")}</select>${["delivered", "cancelled"].includes(order.status) ? `<button class="delete-completed" data-delete-order="${order.id}">Delete order</button>` : ""}</td>
       </tr>`).join("");
   }
 
