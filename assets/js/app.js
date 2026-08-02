@@ -8,6 +8,10 @@
   let activeSort = "featured";
   let searchQuery = "";
   const findProduct = id => data.products.find(product => String(product.id) === String(id));
+  const availableStock = (product, variantId) => {
+    const variant = variantsFor(product).find(item => String(item.id) === String(variantId));
+    return variant?.stock == null ? Infinity : Number(variant.stock);
+  };
 
   const variantsFor = product => {
     const remote = product.product_variants || product.variants;
@@ -206,14 +210,18 @@
     }
     if (add) {
       const id = add.dataset.add;
+      const product = findProduct(id);
       const card = add.closest(".product-card");
       const requestedQty = Number(card?.querySelector("[data-card-quantity-value]")?.textContent || 1);
       const select = card?.querySelector("[data-variant]");
       const option = select?.selectedOptions[0];
-      const variantId = option?.value || `${id}-default`;
+      const fallbackVariant = variantsFor(product).find(variant => variant.stock !== 0) || variantsFor(product)[0];
+      const variantId = option?.value || fallbackVariant?.id || `${id}-default`;
       const key = `${id}:${variantId}`;
       const item = cart.find(i => (i.key || `${i.id}:legacy`) === key);
-      item ? item.qty += requestedQty : cart.push({ id, key, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: requestedQty });
+      const stock = availableStock(product, variantId);
+      if ((item?.qty || 0) + requestedQty > stock) return toast(`Only ${stock} available in stock`);
+      item ? item.qty += requestedQty : cart.push({ id, key, variantId, variantLabel: option?.textContent || fallbackVariant?.label || "Standard", price: Number(option?.dataset.price) || fallbackVariant?.price || product.price, qty: requestedQty });
       saveCart(); toast("Added to your bag");
     }
     if (buyNow) {
@@ -223,6 +231,8 @@
       const select = card?.querySelector("[data-variant]");
       const option = select?.selectedOptions[0];
       const variantId = option?.value || `${id}-default`;
+      const stock = availableStock(findProduct(id), variantId);
+      if (requestedQty > stock) return toast(`Only ${stock} available in stock`);
       localStorage.setItem("curaBuyNow", JSON.stringify([{ id, key: `${id}:${variantId}`, variantId, variantLabel: option?.textContent || "Standard", price: Number(option?.dataset.price) || findProduct(id).price, qty: requestedQty }]));
       location.href = "/checkout";
     }
@@ -234,14 +244,23 @@
     if (quantity) {
       const item = cart.find(entry => String(entry.key || entry.id) === quantity.dataset.key);
       if (item) {
-        quantity.dataset.quantity === "plus" ? item.qty++ : item.qty--;
+        if (quantity.dataset.quantity === "plus") {
+          const product = findProduct(item.id);
+          const stock = availableStock(product, item.variantId);
+          if (item.qty >= stock) return toast(`Only ${stock} available in stock`);
+          item.qty++;
+        } else item.qty--;
         if (item.qty <= 0) cart.splice(cart.indexOf(item), 1);
         saveCart();
       }
     }
     if (cardQuantity) {
-      const value = cardQuantity.parentElement.querySelector("[data-card-quantity-value]");
+      const card = cardQuantity.closest(".product-card");
+      const value = card.querySelector("[data-card-quantity-value]");
       const current = Number(value.textContent || 1);
+      const option = card.querySelector("[data-variant]").selectedOptions[0];
+      const stock = option.dataset.stock === "" ? Infinity : Number(option.dataset.stock);
+      if (cardQuantity.dataset.cardQuantity === "plus" && current >= stock) return toast(`Only ${stock} available in stock`);
       value.textContent = cardQuantity.dataset.cardQuantity === "plus" ? Math.min(99, current + 1) : Math.max(1, current - 1);
     }
     if (event.target.closest(".menu-button")) showLayer("menu", true);
@@ -285,6 +304,7 @@
     const old = card.querySelector(".price s");
     old.hidden = !option.dataset.oldPrice;
     old.textContent = option.dataset.oldPrice ? money(Number(option.dataset.oldPrice)) : "";
+    card.querySelector("[data-card-quantity-value]").textContent = "1";
   });
   $("[data-product-search]").addEventListener("input", event => applySearch(event.target.value));
   $("[data-header-search]").addEventListener("submit", event => {
