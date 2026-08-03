@@ -8,6 +8,23 @@ async function requireAdmin(req) {
   return db;
 }
 
+function normalizeSlug(value) {
+  return String(value || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `product-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+async function uniqueProductSlug(db, requestedSlug, excludedId = null) {
+  const base = normalizeSlug(requestedSlug);
+  let query = db.from("products").select("slug").like("slug", `${base}%`);
+  if (excludedId) query = query.neq("id", excludedId);
+  const { data, error } = await query;
+  if (error) throw error;
+  const used = new Set((data || []).map(product => product.slug));
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  while (used.has(`${base}-${suffix}`)) suffix++;
+  return `${base}-${suffix}`;
+}
+
 export default async function handler(req, res) {
   try {
     const db = await requireAdmin(req);
@@ -34,6 +51,7 @@ export default async function handler(req, res) {
     }
     if (req.method === "POST" && action === "product") {
       const { variants = [], ...product } = req.body.product;
+      product.slug = await uniqueProductSlug(db, product.slug || product.name);
       const { data, error } = await db.from("products").insert(product).select().single();
       if (error) throw error;
       if (variants.length) {
@@ -44,6 +62,7 @@ export default async function handler(req, res) {
     }
     if (req.method === "PATCH" && action === "product") {
       const { id, variants = [], ...product } = req.body.product;
+      product.slug = await uniqueProductSlug(db, product.slug || product.name, id);
       const { error } = await db.from("products").update(product).eq("id", id);
       if (error) throw error;
       await db.from("product_variants").delete().eq("product_id", id);
