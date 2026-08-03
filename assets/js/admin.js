@@ -10,6 +10,7 @@
   ];
   const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
   const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, loadedOnce: false };
+  const cropState = { objectUrl: "", image: null, baseScale: 1, zoom: 1, x: 0, y: 0, dragging: false, pointerX: 0, pointerY: 0, startX: 0, startY: 0 };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -163,42 +164,70 @@
     return slug || `product-${Date.now()}`;
   }
 
-  function compressImage(file) {
-    return new Promise((resolve, reject) => {
-      if (!file.type.startsWith("image/")) return reject(new Error("Choose a valid image"));
-      if (file.size > 15 * 1024 * 1024) return reject(new Error("Original image must be smaller than 15 MB"));
-      const image = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      image.onload = () => {
-        const maximum = 1400;
-        const scale = Math.min(1, maximum / Math.max(image.naturalWidth, image.naturalHeight));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(objectUrl);
-        resolve({ dataUrl: canvas.toDataURL("image/webp", 0.78), width: canvas.width, height: canvas.height });
-      };
-      image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Could not read this image")); };
-      image.src = objectUrl;
-    });
+  function positionCropImage() {
+    const viewport = $("[data-crop-viewport]");
+    const image = $("[data-crop-image]");
+    if (!cropState.image || !viewport.clientWidth) return;
+    const width = cropState.image.naturalWidth * cropState.baseScale * cropState.zoom;
+    const height = cropState.image.naturalHeight * cropState.baseScale * cropState.zoom;
+    const maxX = Math.max(0, (width - viewport.clientWidth) / 2);
+    const maxY = Math.max(0, (height - viewport.clientHeight) / 2);
+    cropState.x = Math.max(-maxX, Math.min(maxX, cropState.x));
+    cropState.y = Math.max(-maxY, Math.min(maxY, cropState.y));
+    image.style.width = `${width}px`;
+    image.style.height = `${height}px`;
+    image.style.left = `${(viewport.clientWidth - width) / 2 + cropState.x}px`;
+    image.style.top = `${(viewport.clientHeight - height) / 2 + cropState.y}px`;
   }
 
-  async function uploadProductImage(file) {
+  function openCropper(file) {
+    const status = $("[data-image-upload-status]");
+    status.className = "";
+    if (!file?.type.startsWith("image/")) return void (status.textContent = "Choose a valid image.");
+    if (file.size > 15 * 1024 * 1024) return void (status.textContent = "Original image must be smaller than 15 MB.");
+    if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
+    cropState.objectUrl = URL.createObjectURL(file);
+    cropState.zoom = 1; cropState.x = 0; cropState.y = 0;
+    $("[data-crop-zoom]").value = "1";
+    const image = $("[data-crop-image]");
+    image.onload = () => {
+      cropState.image = image;
+      const viewport = $("[data-crop-viewport]");
+      cropState.baseScale = Math.max(viewport.clientWidth / image.naturalWidth, viewport.clientHeight / image.naturalHeight);
+      positionCropImage();
+    };
+    image.src = cropState.objectUrl;
+    $("[data-crop-dialog]").showModal();
+  }
+
+  function createCroppedImage() {
+    const viewport = $("[data-crop-viewport]");
+    const image = cropState.image;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200; canvas.height = 1350;
+    const shownWidth = image.naturalWidth * cropState.baseScale * cropState.zoom;
+    const shownHeight = image.naturalHeight * cropState.baseScale * cropState.zoom;
+    const left = (viewport.clientWidth - shownWidth) / 2 + cropState.x;
+    const top = (viewport.clientHeight - shownHeight) / 2 + cropState.y;
+    const outputScale = canvas.width / viewport.clientWidth;
+    canvas.getContext("2d").drawImage(image, left * outputScale, top * outputScale, shownWidth * outputScale, shownHeight * outputScale);
+    return { dataUrl: canvas.toDataURL("image/webp", 0.8), width: canvas.width, height: canvas.height };
+  }
+
+  async function uploadProductImage(compressed) {
     const status = $("[data-image-upload-status]");
     const preview = $("[data-product-image-preview]");
     state.uploadingImage = true;
     status.className = "";
-    status.textContent = "Compressing image...";
+    status.textContent = "Uploading cropped image...";
     try {
-      const compressed = await compressImage(file);
       preview.src = compressed.dataUrl;
       status.textContent = `Uploading compressed image (${compressed.width} × ${compressed.height})...`;
       const result = await api("/api/product-image", { method: "POST", body: JSON.stringify({ dataUrl: compressed.dataUrl }) });
       $("[data-product-form]").image_url.value = result.url;
       preview.src = result.url;
       status.className = "success";
-      status.textContent = "Image compressed and uploaded successfully.";
+      status.textContent = "Image cropped, compressed and uploaded successfully.";
     } catch (error) {
       status.className = "error";
       status.textContent = error.message;
@@ -342,7 +371,41 @@
   $("[data-product-category]").addEventListener("change", event => populateCategorySelects(event.target.value, ""));
   $("[data-product-image-file]").addEventListener("change", event => {
     const file = event.target.files[0];
-    if (file) uploadProductImage(file);
+    if (file) openCropper(file);
+  });
+  const cropViewport = $("[data-crop-viewport]");
+  cropViewport.addEventListener("pointerdown", event => {
+    cropState.dragging = true;
+    cropState.pointerX = event.clientX; cropState.pointerY = event.clientY;
+    cropState.startX = cropState.x; cropState.startY = cropState.y;
+    cropViewport.setPointerCapture(event.pointerId);
+  });
+  cropViewport.addEventListener("pointermove", event => {
+    if (!cropState.dragging) return;
+    cropState.x = cropState.startX + event.clientX - cropState.pointerX;
+    cropState.y = cropState.startY + event.clientY - cropState.pointerY;
+    positionCropImage();
+  });
+  const stopCropDrag = () => { cropState.dragging = false; };
+  cropViewport.addEventListener("pointerup", stopCropDrag);
+  cropViewport.addEventListener("pointercancel", stopCropDrag);
+  $("[data-crop-zoom]").addEventListener("input", event => {
+    cropState.zoom = Number(event.target.value);
+    positionCropImage();
+  });
+  document.querySelectorAll("[data-crop-cancel]").forEach(button => button.addEventListener("click", () => {
+    $("[data-crop-dialog]").close();
+  }));
+  $("[data-crop-dialog]").addEventListener("close", () => {
+    $("[data-product-image-file]").value = "";
+    if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
+    cropState.objectUrl = "";
+  });
+  $("[data-crop-apply]").addEventListener("click", async () => {
+    if (!cropState.image?.naturalWidth) return;
+    const cropped = createCroppedImage();
+    $("[data-crop-dialog]").close();
+    await uploadProductImage(cropped);
   });
 
   $("[data-category-form]").addEventListener("submit", async event => {

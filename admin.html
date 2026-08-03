@@ -99,6 +99,16 @@
     </form>
   </dialog>
 
+  <dialog class="crop-dialog" data-crop-dialog>
+    <div class="crop-panel">
+      <div class="crop-head"><div><p class="eyebrow">PRODUCT PHOTO</p><h2>Crop image</h2></div><button type="button" data-crop-cancel aria-label="Cancel crop">&times;</button></div>
+      <p>Drag the image to position it inside the frame.</p>
+      <div class="crop-viewport" data-crop-viewport><img data-crop-image alt="Crop preview"></div>
+      <label class="crop-zoom">Zoom<input type="range" min="1" max="3" value="1" step="0.01" data-crop-zoom></label>
+      <div class="crop-actions"><button type="button" class="button button-secondary" data-crop-cancel>Cancel</button><button type="button" class="button button-primary" data-crop-apply>Use image</button></div>
+    </div>
+  </dialog>
+
   <template data-variant-template>
     <article class="variant-row">
       <div class="variant-title"><strong>Package size</strong><button type="button" data-remove-variant aria-label="Remove size">&times;</button></div>
