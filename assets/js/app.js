@@ -2,6 +2,7 @@
   const data = window.CURA_DATA;
   const money = value => `EGP ${value.toLocaleString("en-EG")}`;
   const $ = selector => document.querySelector(selector);
+  const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
   const cart = JSON.parse(localStorage.getItem("curaCart") || "[]");
   let activeFilter = "all";
   let activeSubFilter = "all";
@@ -58,7 +59,7 @@
         <img src="${product.image}" alt="${product.name}" loading="lazy">
         ${product.badge ? `<span class="badge">${product.badge}</span>` : ""}
       </div>
-      <div class="product-info"><small>${product.brand}</small><h3>${product.name}</h3>
+      <div class="product-info"><small>${product.brand}</small><h3>${product.name}</h3>${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ""}
         <div class="rating" aria-label="Rated 4.8 out of 5">★★★★★ <span>4.8</span></div>
         <label class="variant-picker"><span>Size</span><select data-variant>${variants.map(variant => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}" data-stock="${variant.stock ?? ""}"${variant.id === selected.id ? " selected" : ""}${variant.stock === 0 ? " disabled" : ""}>${variant.label}${variant.stock === 0 ? " — Sold out" : ""}</option>`).join("")}</select></label>
         <div class="price"><b>${money(selected.price)}</b><s${selected.oldPrice ? "" : " hidden"}>${selected.oldPrice ? money(selected.oldPrice) : ""}</s></div>
@@ -91,7 +92,7 @@
     let list = activeFilter === "all" ? [...data.products] : data.products.filter(p => p.category === activeFilter);
     if (activeSubFilter !== "all") list = list.filter(product => product.subcategory === activeSubFilter);
     if (searchQuery) {
-      list = list.filter(product => `${product.name} ${product.brand} ${product.subcategory}`.toLowerCase().includes(searchQuery));
+      list = list.filter(product => `${product.name} ${product.brand} ${product.subcategory} ${product.description || ""}`.toLowerCase().includes(searchQuery));
     }
     if (activeSort === "price-low") list.sort((a, b) => a.price - b.price);
     if (activeSort === "price-high") list.sort((a, b) => b.price - a.price);
