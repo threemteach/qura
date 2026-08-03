@@ -30,15 +30,16 @@ export default async function handler(req, res) {
     const db = await requireAdmin(req);
     const action = req.query.action || req.body?.action;
     if (req.method === "GET" && action === "dashboard") {
-      const [products, orders, settings, deliveryHistory] = await Promise.all([
+      const [products, orders, settings, deliveryHistory, bundleItems] = await Promise.all([
         db.from("products").select("*, product_variants(*)").order("sort_order"),
         db.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }).limit(100),
         db.from("store_settings").select("*").eq("id", 1).single(),
-        db.from("delivery_rate_history").select("*").order("created_at", { ascending: false }).limit(30)
+        db.from("delivery_rate_history").select("*").order("created_at", { ascending: false }).limit(30),
+        db.from("product_bundle_items").select("*").order("sort_order")
       ]);
       const error = products.error || orders.error || settings.error;
       if (error) throw error;
-      return json(res, 200, { products: products.data, orders: orders.data, settings: settings.data, deliveryHistory: deliveryHistory.data || [] });
+      return json(res, 200, { products: products.data, orders: orders.data, settings: settings.data, deliveryHistory: deliveryHistory.data || [], bundleItems: bundleItems.data || [] });
     }
     if (req.method === "GET" && action === "payment-proof") {
       const path = String(req.query.path || "");
@@ -50,29 +51,47 @@ export default async function handler(req, res) {
       return json(res, 200, { url: data.signedUrl });
     }
     if (req.method === "POST" && action === "product") {
-      const { variants = [], ...product } = req.body.product;
+      const { variants = [], bundleItems = [], ...product } = req.body.product;
       product.slug = await uniqueProductSlug(db, product.slug || product.name);
       const { data, error } = await db.from("products").insert(product).select().single();
       if (error) throw error;
       if (variants.length) {
-        const { error: variantError } = await db.from("product_variants").insert(variants.map((variant, index) => ({ ...variant, product_id: data.id, sort_order: index })));
+        const { error: variantError } = await db.from("product_variants").insert(variants.map((variant, index) => {
+          const { id: ignoredId, ...cleanVariant } = variant;
+          return { ...cleanVariant, product_id: data.id, sort_order: index };
+        }));
         if (variantError) throw variantError;
+      }
+      if (product.badge === "PACKAGE" && bundleItems.length) {
+        const { error: bundleError } = await db.from("product_bundle_items").insert(bundleItems.map((item, index) => ({ bundle_product_id: data.id, component_variant_id: item.variant_id, quantity: item.quantity, sort_order: index })));
+        if (bundleError) throw bundleError;
       }
       return json(res, 201, { product: data });
     }
     if (req.method === "PATCH" && action === "product") {
-      const { id, variants = [], ...product } = req.body.product;
+      const { id, variants = [], bundleItems = [], ...product } = req.body.product;
       product.slug = await uniqueProductSlug(db, product.slug || product.name, id);
       const { error } = await db.from("products").update(product).eq("id", id);
       if (error) throw error;
-      await db.from("product_variants").delete().eq("product_id", id);
-      if (variants.length) {
-        const cleanVariants = variants.map((variant, index) => {
-          const { id: ignoredId, ...cleanVariant } = variant;
-          return { ...cleanVariant, product_id: id, sort_order: index };
-        });
-        const { error: variantError } = await db.from("product_variants").insert(cleanVariants);
-        if (variantError) throw variantError;
+      const keptVariantIds = variants.filter(variant => variant.id).map(variant => variant.id);
+      for (const [index, variant] of variants.entries()) {
+        const { id: variantId, ...cleanVariant } = variant;
+        const result = variantId
+          ? await db.from("product_variants").update({ ...cleanVariant, sort_order: index }).eq("id", variantId).eq("product_id", id)
+          : await db.from("product_variants").insert({ ...cleanVariant, product_id: id, sort_order: index });
+        if (result.error) throw result.error;
+      }
+      let removedVariants = db.from("product_variants").delete().eq("product_id", id);
+      if (keptVariantIds.length) removedVariants = removedVariants.not("id", "in", `(${keptVariantIds.join(",")})`);
+      const { error: removeVariantError } = await removedVariants;
+      if (removeVariantError) throw new Error("A removed size is used inside a package. Remove it from the package first.");
+      if (product.badge === "PACKAGE") {
+        const { error: clearBundleError } = await db.from("product_bundle_items").delete().eq("bundle_product_id", id);
+        if (clearBundleError) throw clearBundleError;
+        if (bundleItems.length) {
+          const { error: bundleError } = await db.from("product_bundle_items").insert(bundleItems.map((item, index) => ({ bundle_product_id: id, component_variant_id: item.variant_id, quantity: item.quantity, sort_order: index })));
+          if (bundleError) throw bundleError;
+        }
       }
       return json(res, 200, { ok: true });
     }

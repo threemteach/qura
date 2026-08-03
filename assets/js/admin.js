@@ -85,11 +85,24 @@
     $("[data-packages-table]").innerHTML = packages.map(product => `
       <tr>
         <td><img src="${escapeHtml(product.image_url || "assets/images/cura-care-logo.png")}" alt=""> <span><b>${escapeHtml(product.name)}</b><small>${escapeHtml(product.description || "Complete routine package")}</small></span></td>
-        <td data-label="Category">${escapeHtml(product.category)}</td>
         <td data-label="Price">${product.product_variants?.map(variant => `<span class="tag">${variantPriceMarkup(variant)}</span>`).join("") || "No price"}</td>
         <td data-label="Status">${product.is_active ? "Active" : "Hidden"}</td>
         <td class="row-actions"><button data-edit-package="${product.id}">Edit</button><button data-delete-product="${product.id}">Delete</button></td>
-      </tr>`).join("") || '<tr><td colspan="5">No routine packages yet.</td></tr>';
+      </tr>`).join("") || '<tr><td colspan="4">No routine packages yet.</td></tr>';
+  }
+
+  function renderPackageComponents(bundleProductId = null) {
+    const selected = new Map((state.bundleItems || []).filter(item => item.bundle_product_id === bundleProductId).map(item => [String(item.component_variant_id), Number(item.quantity)]));
+    const products = state.products.filter(product => product.badge !== "PACKAGE" && product.is_active);
+    $("[data-package-components]").innerHTML = products.map(product => `
+      <article class="component-product">
+        <div><img src="${escapeHtml(product.image_url || "assets/images/cura-care-logo.png")}" alt=""><span><b>${escapeHtml(product.name)}</b><small>${escapeHtml(product.brand)}</small></span></div>
+        <div class="component-variants">${(product.product_variants || []).map(variant => {
+          const quantity = selected.get(String(variant.id)) || 1;
+          const checked = selected.has(String(variant.id));
+          return `<label><input type="checkbox" data-component-variant="${variant.id}" data-component-product="${product.id}"${checked ? " checked" : ""}><span>${escapeHtml(variant.label)} <small>${variant.stock} available</small></span><input type="number" min="1" value="${quantity}" inputmode="numeric" data-component-quantity="${variant.id}"${checked ? "" : " disabled"} aria-label="Quantity of ${escapeHtml(product.name)}"></label>`;
+        }).join("") || "<small>No sizes available</small>"}</div>
+      </article>`).join("") || '<p class="form-help">Add regular products and sizes first, then create the package.</p>';
   }
 
   function renderOrders() {
@@ -160,6 +173,7 @@
   function addVariant(variant = {}) {
     const fragment = $("[data-variant-template]").content.cloneNode(true);
     const row = fragment.querySelector(".variant-row");
+    row.querySelector('[data-v="id"]').value = variant.id || "";
     row.querySelector('[data-v="label"]').value = variant.label || "";
     row.querySelector('[data-v="stock"]').value = variant.stock ?? 1;
     const original = Number(variant.old_price || variant.price || 0);
@@ -255,6 +269,10 @@
     state.packageMode = packageMode || product?.badge === "PACKAGE";
     $("[data-editor-eyebrow]").textContent = state.packageMode ? "PACKAGE EDITOR" : "PRODUCT EDITOR";
     $("[data-editor-title]").textContent = state.packageMode ? "Routine package details" : "Product details";
+    $("[data-package-components-section]").hidden = !state.packageMode;
+    $("[data-category-field]").hidden = state.packageMode;
+    $("[data-subcategory-field]").hidden = state.packageMode;
+    $("[data-product-category]").required = !state.packageMode;
     state.uploadingImage = false;
     $("[data-product-error]").textContent = "";
     $("[data-variant-rows]").innerHTML = "";
@@ -266,6 +284,7 @@
     $("[data-product-image-preview]").src = product?.image_url || "assets/images/cura-care-logo.png";
     $("[data-image-upload-status]").textContent = product?.image_url ? "Current product image" : "Choose an image from your phone";
     (product?.product_variants?.length ? product.product_variants : [state.packageMode ? { label: "Complete routine" } : {}]).forEach(addVariant);
+    if (state.packageMode) renderPackageComponents(product?.id || null);
     $("[data-product-dialog]").showModal();
   }
 
@@ -273,6 +292,7 @@
     return [...document.querySelectorAll(".variant-row")].map(row => {
       const { original, discount, finalPrice } = calculateVariant(row);
       return {
+        id: row.querySelector('[data-v="id"]').value || undefined,
         label: row.querySelector('[data-v="label"]').value.trim(),
         price: finalPrice,
         old_price: discount > 0 ? original : null,
@@ -386,6 +406,11 @@
         $("[data-product-form]").is_offer.checked = true;
       }
     }
+    if (event.target.matches("[data-component-variant]")) {
+      const quantity = document.querySelector(`[data-component-quantity="${event.target.dataset.componentVariant}"]`);
+      quantity.disabled = !event.target.checked;
+      if (event.target.checked) quantity.focus();
+    }
   });
   $("[data-product-category]").addEventListener("change", event => populateCategorySelects(event.target.value, ""));
   $("[data-product-image-file]").addEventListener("change", event => {
@@ -470,8 +495,17 @@
     }
     const raw = Object.fromEntries(new FormData(form));
     const variants = collectVariants();
+    const bundleItems = [...document.querySelectorAll("[data-component-variant]:checked")].map(input => ({
+      variant_id: input.dataset.componentVariant,
+      product_id: input.dataset.componentProduct,
+      quantity: Math.max(1, Number(document.querySelector(`[data-component-quantity="${input.dataset.componentVariant}"]`).value || 1))
+    }));
     if (variants.some(variant => !variant.label || variant.price <= 0)) {
       $("[data-product-error]").textContent = "Add a size and a valid original price.";
+      return;
+    }
+    if (state.packageMode && new Set(bundleItems.map(item => item.product_id)).size < 2) {
+      $("[data-product-error]").textContent = "Choose products from at least two different products for this package.";
       return;
     }
     const product = {
@@ -482,6 +516,9 @@
       is_bestseller: form.is_bestseller.checked,
       is_offer: form.is_offer.checked || variants.some(variant => variant.old_price),
       badge: state.packageMode ? "PACKAGE" : undefined,
+      category: state.packageMode ? "__package__" : raw.category,
+      subcategory: state.packageMode ? "" : raw.subcategory,
+      bundleItems: state.packageMode ? bundleItems : undefined,
       variants
     };
     try {
