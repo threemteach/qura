@@ -162,7 +162,6 @@ h2 { margin-bottom: 0; font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1.05; }
 .product-info > small { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .product-info h3 { min-height: 48px; margin: 5px 0 8px; font: 400 18px/1.35 Georgia, serif; }
 .product-description{display:-webkit-box;min-height:34px;margin:0 0 9px;overflow:hidden;color:var(--muted);font-size:10px;line-height:1.65;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-.rating { margin-bottom: 10px; color: var(--gold); font-size: 12px; letter-spacing: .04em; }
 .rating span { color: var(--muted); letter-spacing: 0; }
 .price { display: flex; align-items: center; gap: 9px; margin-bottom: 15px; }
 .price s { color: var(--muted); font-size: 12px; }
