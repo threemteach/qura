@@ -9,7 +9,7 @@
     { id: "lip", label: "Lip care", subcategories: [] }, { id: "nail", label: "Nail care", subcategories: [] }
   ];
   const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
-  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, loadedOnce: false, packageMode: false };
+  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, newProductUploads: 0, loadedOnce: false, packageMode: false };
   const cropState = { objectUrl: "", image: null, baseScale: 1, zoom: 1, x: 0, y: 0, dragging: false, pointerX: 0, pointerY: 0, startX: 0, startY: 0 };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
@@ -103,6 +103,54 @@
           return `<label><input type="checkbox" data-component-variant="${variant.id}" data-component-product="${product.id}"${checked ? " checked" : ""}><span>${escapeHtml(variant.label)} <small>${variant.stock} available</small></span><input type="number" min="1" value="${quantity}" inputmode="numeric" data-component-quantity="${variant.id}"${checked ? "" : " disabled"} aria-label="Quantity of ${escapeHtml(product.name)}"></label>`;
         }).join("") || "<small>No sizes available</small>"}</div>
       </article>`).join("") || '<p class="form-help">Add regular products and sizes first, then create the package.</p>';
+  }
+
+  function addNewPackageProduct(values = {}) {
+    const row = $("[data-package-product-template]").content.firstElementChild.cloneNode(true);
+    const category = row.querySelector('[data-np="category"]');
+    category.innerHTML = '<option value="">Choose category</option>' + categories().map(item => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join("");
+    Object.entries(values).forEach(([key, value]) => {
+      const field = row.querySelector(`[data-np="${key}"]`);
+      if (field) field.value = value ?? "";
+    });
+    $("[data-package-new-products]").append(row);
+  }
+
+  function collectNewPackageProducts() {
+    return [...document.querySelectorAll("[data-package-new-products] .package-new-product")].map(row => {
+      const value = key => row.querySelector(`[data-np="${key}"]`)?.value.trim() || "";
+      return {
+        name: value("name"), brand: value("brand"), category: value("category"), subcategory: value("subcategory"),
+        description: value("description"), image_url: value("image_url"), quantity: Math.max(1, Number(value("quantity") || 1)),
+        variant: { label: value("label"), price: Number(value("price")), old_price: null, stock: Math.max(0, Number(value("stock") || 0)) }
+      };
+    });
+  }
+
+  async function compressAndUploadNewProductImage(file, row) {
+    const status = row.querySelector("[data-new-product-image-status]");
+    state.newProductUploads++;
+    status.textContent = "Compressing and uploading...";
+    try {
+      const bitmap = await createImageBitmap(file);
+      const size = 1000;
+      const canvas = document.createElement("canvas");
+      canvas.width = size; canvas.height = size;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#fff"; context.fillRect(0, 0, size, size);
+      const scale = Math.min(size / bitmap.width, size / bitmap.height);
+      const width = bitmap.width * scale, height = bitmap.height * scale;
+      context.drawImage(bitmap, (size - width) / 2, (size - height) / 2, width, height);
+      bitmap.close();
+      const dataUrl = canvas.toDataURL("image/webp", .82);
+      const result = await api("/api/product-image", { method: "POST", body: JSON.stringify({ dataUrl }) });
+      row.querySelector('[data-np="image_url"]').value = result.url;
+      status.textContent = "Photo uploaded";
+    } catch (error) {
+      status.textContent = error.message || "Photo upload failed";
+    } finally {
+      state.newProductUploads--;
+    }
   }
 
   function renderOrders() {
@@ -284,7 +332,11 @@
     $("[data-product-image-preview]").src = product?.image_url || "assets/images/cura-care-logo.png";
     $("[data-image-upload-status]").textContent = product?.image_url ? "Current product image" : "Choose an image from your phone";
     (product?.product_variants?.length ? product.product_variants : [state.packageMode ? { label: "Complete routine" } : {}]).forEach(addVariant);
-    if (state.packageMode) renderPackageComponents(product?.id || null);
+    $("[data-package-new-products]").innerHTML = "";
+    if (state.packageMode) {
+      renderPackageComponents(product?.id || null);
+      if (!product) { addNewPackageProduct(); addNewPackageProduct(); }
+    }
     $("[data-product-dialog]").showModal();
   }
 
@@ -336,6 +388,8 @@
       await load();
     }
     if (event.target.closest("[data-add-variant]")) addVariant({});
+    if (event.target.closest("[data-add-package-product]")) addNewPackageProduct();
+    if (event.target.closest("[data-remove-package-product]")) event.target.closest(".package-new-product").remove();
     if (event.target.closest("[data-remove-variant]")) {
       const rows = document.querySelectorAll(".variant-row");
       if (rows.length === 1) return toast("Every product needs at least one size");
@@ -417,6 +471,12 @@
     const file = event.target.files[0];
     if (file) openCropper(file);
   });
+  document.addEventListener("change", event => {
+    if (event.target.matches("[data-new-product-image]")) {
+      const file = event.target.files[0];
+      if (file) compressAndUploadNewProductImage(file, event.target.closest(".package-new-product"));
+    }
+  });
   const cropViewport = $("[data-crop-viewport]");
   cropViewport.addEventListener("pointerdown", event => {
     cropState.dragging = true;
@@ -489,12 +549,13 @@
   $("[data-product-form]").addEventListener("submit", async event => {
     event.preventDefault();
     const form = event.target;
-    if (state.uploadingImage) {
-      $("[data-product-error]").textContent = "Wait for the image upload to finish.";
+    if (state.uploadingImage || state.newProductUploads) {
+      $("[data-product-error]").textContent = "Wait for all image uploads to finish.";
       return;
     }
     const raw = Object.fromEntries(new FormData(form));
     const variants = collectVariants();
+    const newProducts = state.packageMode ? collectNewPackageProducts() : [];
     const bundleItems = [...document.querySelectorAll("[data-component-variant]:checked")].map(input => ({
       variant_id: input.dataset.componentVariant,
       product_id: input.dataset.componentProduct,
@@ -504,8 +565,12 @@
       $("[data-product-error]").textContent = "Add a size and a valid original price.";
       return;
     }
-    if (state.packageMode && new Set(bundleItems.map(item => item.product_id)).size < 2) {
-      $("[data-product-error]").textContent = "Choose products from at least two different products for this package.";
+    if (newProducts.some(item => !item.name || !item.brand || !item.category || !item.variant.label || item.variant.price <= 0)) {
+      $("[data-product-error]").textContent = "Complete the name, brand, category, size and standalone price for every new product.";
+      return;
+    }
+    if (state.packageMode && new Set(bundleItems.map(item => item.product_id)).size + newProducts.length < 2) {
+      $("[data-product-error]").textContent = "A routine package needs at least two products.";
       return;
     }
     const product = {
@@ -519,6 +584,7 @@
       category: state.packageMode ? "__package__" : raw.category,
       subcategory: state.packageMode ? "" : raw.subcategory,
       bundleItems: state.packageMode ? bundleItems : undefined,
+      newProducts: state.packageMode ? newProducts : undefined,
       variants
     };
     try {

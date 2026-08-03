@@ -25,6 +25,31 @@ async function uniqueProductSlug(db, requestedSlug, excludedId = null) {
   return `${base}-${suffix}`;
 }
 
+async function createBundleProducts(db, products = []) {
+  const created = [];
+  for (const [index, item] of products.entries()) {
+    const { variant, quantity, ...fields } = item;
+    const product = {
+      ...fields,
+      slug: await uniqueProductSlug(db, fields.name),
+      image_url: fields.image_url || "assets/images/cura-care-logo.png",
+      is_active: true,
+      is_bestseller: false,
+      is_offer: false,
+      sort_order: 900 + index
+    };
+    const { data: createdProduct, error: productError } = await db.from("products").insert(product).select("id").single();
+    if (productError) throw productError;
+    created.push(createdProduct.id);
+    const { data: createdVariant, error: variantError } = await db.from("product_variants")
+      .insert({ ...variant, product_id: createdProduct.id, sort_order: 0 })
+      .select("id").single();
+    if (variantError) throw variantError;
+    created[created.length - 1] = { productId: createdProduct.id, variant_id: createdVariant.id, quantity };
+  }
+  return created;
+}
+
 export default async function handler(req, res) {
   try {
     const db = await requireAdmin(req);
@@ -51,7 +76,7 @@ export default async function handler(req, res) {
       return json(res, 200, { url: data.signedUrl });
     }
     if (req.method === "POST" && action === "product") {
-      const { variants = [], bundleItems = [], ...product } = req.body.product;
+      const { variants = [], bundleItems = [], newProducts = [], ...product } = req.body.product;
       product.slug = await uniqueProductSlug(db, product.slug || product.name);
       const { data, error } = await db.from("products").insert(product).select().single();
       if (error) throw error;
@@ -62,14 +87,16 @@ export default async function handler(req, res) {
         }));
         if (variantError) throw variantError;
       }
-      if (product.badge === "PACKAGE" && bundleItems.length) {
-        const { error: bundleError } = await db.from("product_bundle_items").insert(bundleItems.map((item, index) => ({ bundle_product_id: data.id, component_variant_id: item.variant_id, quantity: item.quantity, sort_order: index })));
+      if (product.badge === "PACKAGE" && (bundleItems.length || newProducts.length)) {
+        const createdItems = await createBundleProducts(db, newProducts);
+        const allItems = [...bundleItems, ...createdItems];
+        const { error: bundleError } = await db.from("product_bundle_items").insert(allItems.map((item, index) => ({ bundle_product_id: data.id, component_variant_id: item.variant_id, quantity: item.quantity, sort_order: index })));
         if (bundleError) throw bundleError;
       }
       return json(res, 201, { product: data });
     }
     if (req.method === "PATCH" && action === "product") {
-      const { id, variants = [], bundleItems = [], ...product } = req.body.product;
+      const { id, variants = [], bundleItems = [], newProducts = [], ...product } = req.body.product;
       product.slug = await uniqueProductSlug(db, product.slug || product.name, id);
       const { error } = await db.from("products").update(product).eq("id", id);
       if (error) throw error;
@@ -88,8 +115,10 @@ export default async function handler(req, res) {
       if (product.badge === "PACKAGE") {
         const { error: clearBundleError } = await db.from("product_bundle_items").delete().eq("bundle_product_id", id);
         if (clearBundleError) throw clearBundleError;
-        if (bundleItems.length) {
-          const { error: bundleError } = await db.from("product_bundle_items").insert(bundleItems.map((item, index) => ({ bundle_product_id: id, component_variant_id: item.variant_id, quantity: item.quantity, sort_order: index })));
+        if (bundleItems.length || newProducts.length) {
+          const createdItems = await createBundleProducts(db, newProducts);
+          const allItems = [...bundleItems, ...createdItems];
+          const { error: bundleError } = await db.from("product_bundle_items").insert(allItems.map((item, index) => ({ bundle_product_id: id, component_variant_id: item.variant_id, quantity: item.quantity, sort_order: index })));
           if (bundleError) throw bundleError;
         }
       }

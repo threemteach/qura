@@ -94,8 +94,11 @@
         </div>
       </section>
       <section class="form-section package-components" data-package-components-section hidden>
-        <div class="variants-head"><div><h3>Products inside this package</h3><p>Select at least two product sizes and set the quantity included from each.</p></div></div>
+        <div class="variants-head"><div><h3>Products inside this package</h3><p>Add all routine products here in one go. Every product will also be saved and sold separately with its own price.</p></div><button type="button" data-add-package-product>+ Add new product</button></div>
+        <div class="package-new-products" data-package-new-products></div>
+        <details class="existing-components"><summary>Use a product already in the store (optional)</summary>
         <div class="component-picker" data-package-components></div>
+        </details>
       </section>
       <section class="form-section">
         <h3>Where should it appear?</h3>
@@ -133,6 +136,23 @@
       </div>
       <input data-v="old_price" type="hidden">
       <div class="price-preview" data-price-preview>No offer applied</div>
+    </article>
+  </template>
+  <template data-package-product-template>
+    <article class="package-new-product">
+      <div class="variant-title"><strong>New standalone product</strong><button type="button" data-remove-package-product aria-label="Remove product">&times;</button></div>
+      <div class="package-product-grid">
+        <label>Product name<input data-np="name" required></label>
+        <label>Brand<input data-np="brand" required></label>
+        <label>Category<select data-np="category" required></select></label>
+        <label>Subcategory<input data-np="subcategory" placeholder="Optional"></label>
+        <label class="wide">Description<textarea data-np="description" rows="2"></textarea></label>
+        <label class="package-product-photo wide"><span>Product photo</span><input type="file" accept="image/jpeg,image/png,image/webp" data-new-product-image><input type="hidden" data-np="image_url"><small data-new-product-image-status>Compressed automatically</small></label>
+        <label>Size / package<input data-np="label" placeholder="Example: 200 ml" required></label>
+        <label>Standalone price<input data-np="price" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+        <label>Available stock<input data-np="stock" type="number" min="0" inputmode="numeric" required></label>
+        <label>Quantity inside package<input data-np="quantity" type="number" min="1" value="1" inputmode="numeric" required></label>
+      </div>
     </article>
   </template>
   <div class="toast" role="status" aria-live="polite"></div>
