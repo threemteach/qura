@@ -28,6 +28,7 @@ img { display: block; max-width: 100%; }
 .announcement { padding: 8px 16px; background: var(--purple-dark); color: #fff8fc; text-align: center; font-size: 12px; letter-spacing: .02em; }
 .announcement [data-free-delivery-message] { color: #fff; }
 .announcement-separator { margin-inline: 8px; color: #e6a8c6; }
+.footer-social-link{display:flex!important;align-items:center;gap:7px}.footer-social-link svg{width:17px;height:17px;flex:0 0 17px;fill:currentColor}
 .site-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid rgba(91,36,110,.1); background: rgba(248,243,248,.92); backdrop-filter: blur(14px); }
 .header-row { display: flex; align-items: center; height: 76px; gap: 28px; }
 .brand { display: flex; align-items: center; gap: 11px; font-family: Georgia, serif; font-size: 21px; letter-spacing: .06em; color: var(--purple); white-space: nowrap; }
