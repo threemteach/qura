@@ -26,7 +26,7 @@
   <div class="admin-app" data-admin-app hidden>
     <aside class="admin-sidebar">
       <a class="admin-brand" href="/"><img src="assets/images/cura-care-logo.png" alt=""><span>Cura Care<small>Admin</small></span></a>
-      <nav><button class="active" data-admin-tab="products">Products</button><button data-admin-tab="catalog">Categories</button><button data-admin-tab="orders">Orders</button><button data-admin-tab="settings">Delivery & payment</button></nav>
+      <nav><button class="active" data-admin-tab="products">Products</button><button data-admin-tab="packages">Packages</button><button data-admin-tab="catalog">Categories</button><button data-admin-tab="orders">Orders</button><button data-admin-tab="settings">Delivery & payment</button></nav>
       <button data-admin-logout>Sign out</button>
     </aside>
     <main class="admin-main">
@@ -37,6 +37,13 @@
           <button class="button button-primary" data-new-product>+ Add product</button>
         </div>
         <div class="admin-table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Flags</th><th>Sizes & prices</th><th>Status</th><th></th></tr></thead><tbody data-products-table></tbody></table></div>
+      </section>
+      <section data-panel="packages" hidden>
+        <div class="admin-toolbar">
+          <div><h2 class="panel-title">Routine packages</h2><p class="form-help">Sell a complete routine as one package with its own image, price and stock.</p></div>
+          <button class="button button-primary" data-new-package>+ Add package</button>
+        </div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Package</th><th>Category</th><th>Price</th><th>Status</th><th></th></tr></thead><tbody data-packages-table></tbody></table></div>
       </section>
       <section data-panel="catalog" hidden>
         <div class="setup-grid">
@@ -67,7 +74,7 @@
 
   <dialog class="product-dialog" data-product-dialog>
     <form method="dialog" data-product-form>
-      <div class="dialog-head"><div><p class="eyebrow">PRODUCT EDITOR</p><h2>Product details</h2></div><button type="button" data-close-product aria-label="Close">&times;</button></div>
+      <div class="dialog-head"><div><p class="eyebrow" data-editor-eyebrow>PRODUCT EDITOR</p><h2 data-editor-title>Product details</h2></div><button type="button" data-close-product aria-label="Close">&times;</button></div>
       <input name="id" type="hidden">
       <section class="form-section">
         <h3>Basic information</h3>

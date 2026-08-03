@@ -25,9 +25,10 @@
   };
 
   function renderMainFilters() {
+    const catalogProducts = data.products.filter(product => product.badge !== "PACKAGE");
     const filters = [{ id: "all", name: "All products", icon: "✦" }, ...data.categories];
     $("[data-main-filters]").innerHTML = filters.map(category => {
-      const count = category.id === "all" ? data.products.length : data.products.filter(product => product.category === category.id).length;
+      const count = category.id === "all" ? catalogProducts.length : catalogProducts.filter(product => product.category === category.id).length;
       return `<button class="main-filter${category.id === activeFilter ? " active" : ""}" data-filter="${category.id}">
         <span aria-hidden="true">${category.icon}</span><b>${category.name}</b><small>${count}</small>
       </button>`;
@@ -77,8 +78,9 @@
   }
 
   function renderShelves() {
-    const bestsellers = data.products.filter(product => ["BESTSELLER", "LOVED", "SUMMER PICK", "ROUTINE"].includes(product.badge)).slice(0, 5);
-    const offers = data.products.filter(product => product.oldPrice).slice(0, 5);
+    const regularProducts = data.products.filter(product => product.badge !== "PACKAGE");
+    const bestsellers = regularProducts.filter(product => ["BESTSELLER", "LOVED", "SUMMER PICK", "ROUTINE"].includes(product.badge)).slice(0, 5);
+    const offers = regularProducts.filter(product => product.oldPrice).slice(0, 5);
     const loop = products => {
       const cards = products.map(shelfCard).join("");
       return `<div class="shelf-loop"><div class="shelf-group">${cards}</div><div class="shelf-group" aria-hidden="true" inert>${cards}</div></div>`;
@@ -87,8 +89,16 @@
     $("[data-offer-shelf]").innerHTML = loop(offers);
   }
 
+  function renderPackages() {
+    const packages = data.products.filter(product => product.badge === "PACKAGE");
+    const section = $("[data-package-section]");
+    section.hidden = packages.length === 0;
+    $("[data-package-grid]").innerHTML = packages.map(productCard).join("");
+  }
+
   function renderProducts() {
-    let list = activeFilter === "all" ? [...data.products] : data.products.filter(p => p.category === activeFilter);
+    const regularProducts = data.products.filter(product => product.badge !== "PACKAGE");
+    let list = activeFilter === "all" ? [...regularProducts] : regularProducts.filter(p => p.category === activeFilter);
     if (activeSubFilter !== "all") list = list.filter(product => product.subcategory === activeSubFilter);
     if (searchQuery) {
       list = list.filter(product => `${product.name} ${product.brand} ${product.subcategory} ${product.description || ""}`.toLowerCase().includes(searchQuery));
@@ -323,6 +333,7 @@
   renderMainFilters();
   renderSubFilters();
   renderShelves();
+  renderPackages();
   renderProducts();
   saveCart();
   fetch("/api/catalog").then(response => response.ok ? response.json() : Promise.reject()).then(payload => {
@@ -351,6 +362,6 @@
       const base = variants.find(variant => variant.is_default) || variants[0] || {};
       return { ...product, image: product.image_url, price: Number(base.price || 0), oldPrice: base.old_price ? Number(base.old_price) : null, badge: product.badge || (product.is_bestseller ? "BESTSELLER" : product.is_offer ? "SALE" : ""), featured: product.is_bestseller, product_variants: variants };
     });
-    renderMainFilters(); renderSubFilters(); renderShelves(); renderProducts(); saveCart();
+    renderMainFilters(); renderSubFilters(); renderShelves(); renderPackages(); renderProducts(); saveCart();
   }).catch(() => {});
 })();

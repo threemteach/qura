@@ -9,7 +9,7 @@
     { id: "lip", label: "Lip care", subcategories: [] }, { id: "nail", label: "Nail care", subcategories: [] }
   ];
   const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
-  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, loadedOnce: false };
+  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, loadedOnce: false, packageMode: false };
   const cropState = { objectUrl: "", image: null, baseScale: 1, zoom: 1, x: 0, y: 0, dragging: false, pointerX: 0, pointerY: 0, startX: 0, startY: 0 };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
@@ -48,6 +48,7 @@
     notifyNewOrders(previousOrders, data.orders || []);
     Object.assign(state, data);
     renderProducts();
+    renderPackages();
     renderOrders();
     fillSettings();
     renderCatalog();
@@ -66,7 +67,7 @@
 
   function renderProducts(query = "") {
     const normalized = query.trim().toLowerCase();
-    const list = state.products.filter(product => `${product.name} ${product.brand} ${product.category}`.toLowerCase().includes(normalized));
+    const list = state.products.filter(product => product.badge !== "PACKAGE" && `${product.name} ${product.brand} ${product.category}`.toLowerCase().includes(normalized));
     $("[data-product-count]").textContent = `${list.length} product${list.length === 1 ? "" : "s"}`;
     $("[data-products-table]").innerHTML = list.map(product => `
       <tr>
@@ -77,6 +78,18 @@
         <td data-label="Status">${product.is_active ? "Active" : "Hidden"}</td>
         <td class="row-actions"><button data-edit-product="${product.id}">Edit</button><button data-delete-product="${product.id}">Delete</button></td>
       </tr>`).join("");
+  }
+
+  function renderPackages() {
+    const packages = state.products.filter(product => product.badge === "PACKAGE");
+    $("[data-packages-table]").innerHTML = packages.map(product => `
+      <tr>
+        <td><img src="${escapeHtml(product.image_url || "assets/images/cura-care-logo.png")}" alt=""> <span><b>${escapeHtml(product.name)}</b><small>${escapeHtml(product.description || "Complete routine package")}</small></span></td>
+        <td data-label="Category">${escapeHtml(product.category)}</td>
+        <td data-label="Price">${product.product_variants?.map(variant => `<span class="tag">${variantPriceMarkup(variant)}</span>`).join("") || "No price"}</td>
+        <td data-label="Status">${product.is_active ? "Active" : "Hidden"}</td>
+        <td class="row-actions"><button data-edit-package="${product.id}">Edit</button><button data-delete-product="${product.id}">Delete</button></td>
+      </tr>`).join("") || '<tr><td colspan="5">No routine packages yet.</td></tr>';
   }
 
   function renderOrders() {
@@ -236,9 +249,12 @@
     }
   }
 
-  function openProduct(product) {
+  function openProduct(product, packageMode = false) {
     const form = $("[data-product-form]");
     form.reset();
+    state.packageMode = packageMode || product?.badge === "PACKAGE";
+    $("[data-editor-eyebrow]").textContent = state.packageMode ? "PACKAGE EDITOR" : "PRODUCT EDITOR";
+    $("[data-editor-title]").textContent = state.packageMode ? "Routine package details" : "Product details";
     state.uploadingImage = false;
     $("[data-product-error]").textContent = "";
     $("[data-variant-rows]").innerHTML = "";
@@ -249,7 +265,7 @@
     });
     $("[data-product-image-preview]").src = product?.image_url || "assets/images/cura-care-logo.png";
     $("[data-image-upload-status]").textContent = product?.image_url ? "Current product image" : "Choose an image from your phone";
-    (product?.product_variants?.length ? product.product_variants : [{}]).forEach(addVariant);
+    (product?.product_variants?.length ? product.product_variants : [state.packageMode ? { label: "Complete routine" } : {}]).forEach(addVariant);
     $("[data-product-dialog]").showModal();
   }
 
@@ -288,9 +304,12 @@
       $("[data-admin-title]").textContent = tab.textContent;
     }
     if (event.target.closest("[data-new-product]")) openProduct();
+    if (event.target.closest("[data-new-package]")) openProduct(null, true);
     if (event.target.closest("[data-close-product]")) $("[data-product-dialog]").close();
     const edit = event.target.closest("[data-edit-product]");
     if (edit) openProduct(state.products.find(product => product.id === edit.dataset.editProduct));
+    const editPackage = event.target.closest("[data-edit-package]");
+    if (editPackage) openProduct(state.products.find(product => product.id === editPackage.dataset.editPackage), true);
     const remove = event.target.closest("[data-delete-product]");
     if (remove && confirm("Delete this product?")) {
       await api(`/api/admin?action=product&id=${remove.dataset.deleteProduct}`, { method: "DELETE" });
@@ -462,6 +481,7 @@
       is_active: form.is_active.checked,
       is_bestseller: form.is_bestseller.checked,
       is_offer: form.is_offer.checked || variants.some(variant => variant.old_price),
+      badge: state.packageMode ? "PACKAGE" : undefined,
       variants
     };
     try {

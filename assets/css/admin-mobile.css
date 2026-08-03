@@ -1,6 +1,7 @@
 .admin-search{display:flex;min-width:0;flex:1;align-items:center;gap:12px}
 .admin-search input{flex:1}
 .admin-search span{color:var(--muted);font-size:10px;white-space:nowrap}
+.panel-title{margin:0 0 4px;font:28px Georgia,serif}
 .product-dialog form{background:#f9f7f9}
 .dialog-head{position:sticky;z-index:3;top:0;align-items:center;margin:-22px -22px 18px;padding:17px 22px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.96);backdrop-filter:blur(12px)}
 .dialog-head h2{margin:0}.dialog-head .eyebrow{margin:0 0 3px}
