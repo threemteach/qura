@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="assets/css/styles.css">
   <link rel="stylesheet" href="assets/css/admin.css">
   <link rel="stylesheet" href="assets/css/admin-mobile.css">
-  <style>[hidden]{display:none!important}</style>
+  <style>[hidden]{display:none!important}.row-actions .danger-action{color:#a21d32}</style>
 </head>
 <body class="admin-page">
   <section class="admin-login" data-admin-login>
@@ -94,9 +94,10 @@
         </div>
       </section>
       <section class="form-section package-components" data-package-components-section hidden>
-        <div class="variants-head"><div><h3>Products inside this package</h3><p>Add all routine products here in one go. Every product will also be saved and sold separately with its own price.</p></div><button type="button" data-add-package-product>+ Add new product</button></div>
+        <div class="package-step-head"><span>1</span><div><h3>Build the routine</h3><p>Add the items included in this package. Customers only pay the complete package price.</p></div></div>
+        <button class="add-package-product" type="button" data-add-package-product><b>＋</b><span>Add another item<small>Name, photo, size and stock</small></span></button>
         <div class="package-new-products" data-package-new-products></div>
-        <details class="existing-components"><summary>Use a product already in the store (optional)</summary>
+        <details class="existing-components" hidden><summary>Existing linked products</summary>
         <div class="component-picker" data-package-components></div>
         </details>
       </section>
@@ -104,8 +105,8 @@
         <h3>Where should it appear?</h3>
         <div class="flag-row"><label><input name="is_active" type="checkbox" checked><span>Active</span></label><label><input name="is_bestseller" type="checkbox"><span>Best seller</span></label><label><input name="is_offer" type="checkbox"><span>Offer</span></label></div>
       </section>
-      <section class="form-section prices-section">
-        <div class="variants-head"><div><h3>Sizes, price & offer</h3><p>Enter the original price and discount. The final price is calculated for you.</p></div><button type="button" data-add-variant>+ Add size</button></div>
+      <section class="form-section prices-section" data-price-section>
+        <div class="variants-head"><div><h3 data-price-title>Sizes, price & offer</h3><p data-price-help>Enter the original price and discount. The final price is calculated for you.</p></div><button type="button" data-add-variant>+ Add size</button></div>
         <div data-variant-rows></div>
       </section>
       <button class="button button-primary save-product" value="default">Save product</button>
@@ -140,22 +141,19 @@
   </template>
   <template data-package-product-template>
     <article class="package-new-product">
-      <div class="variant-title"><strong>New standalone product</strong><button type="button" data-remove-package-product aria-label="Remove product">&times;</button></div>
+      <div class="variant-title"><strong>Package item</strong><button type="button" data-remove-package-product aria-label="Remove product">&times;</button></div>
       <div class="package-product-grid">
         <label>Product name<input data-np="name" required></label>
-        <label>Brand<input data-np="brand" required></label>
-        <label>Category<select data-np="category" required></select></label>
-        <label>Subcategory<input data-np="subcategory" placeholder="Optional"></label>
         <label class="wide">Description<textarea data-np="description" rows="2"></textarea></label>
-        <label class="package-product-photo wide"><span>Product photo</span><input type="file" accept="image/jpeg,image/png,image/webp" data-new-product-image><input type="hidden" data-np="image_url"><small data-new-product-image-status>Compressed automatically</small></label>
+        <label class="package-product-photo wide"><img src="assets/images/cura-care-logo.png" data-new-product-image-preview alt=""><span><b>Product photo</b><small data-new-product-image-status>Tap to choose — compressed automatically</small></span><input type="file" accept="image/jpeg,image/png,image/webp" data-new-product-image hidden><input type="hidden" data-np="image_url"></label>
         <label>Size / package<input data-np="label" placeholder="Example: 200 ml" required></label>
-        <label>Standalone price<input data-np="price" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
         <label>Available stock<input data-np="stock" type="number" min="0" inputmode="numeric" required></label>
         <label>Quantity inside package<input data-np="quantity" type="number" min="1" value="1" inputmode="numeric" required></label>
       </div>
     </article>
   </template>
   <div class="toast" role="status" aria-live="polite"></div>
+  <script src="assets/js/data.js"></script>
   <script src="assets/js/admin.js"></script>
 </body>
 </html>

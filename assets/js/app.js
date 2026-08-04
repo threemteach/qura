@@ -1,5 +1,31 @@
 (() => {
   const data = window.CURA_DATA;
+  if (["localhost", "127.0.0.1"].includes(location.hostname)) {
+    try {
+      const demo = JSON.parse(localStorage.getItem("curaAdminDemoV3") || "null");
+      if (demo?.products?.length) {
+        const variants = demo.products.flatMap(product => product.product_variants || []);
+        data.categories = (demo.settings?.catalog_categories || []).map(category => ({
+          id: category.id, name: category.name || category.label || category.id,
+          subtitle: "Explore products in this category", icon: "✦", subs: category.subcategories || []
+        }));
+        data.products = demo.products.filter(product => product.is_active).map(product => {
+          const sorted = [...(product.product_variants || [])].sort((a, b) => a.sort_order - b.sort_order);
+          const base = sorted[0] || {};
+          const bundle_items = (demo.bundleItems || []).filter(item => item.bundle_product_id === product.id).map(item => {
+            const componentVariant = variants.find(variant => String(variant.id) === String(item.component_variant_id));
+            const componentProduct = demo.products.find(entry => String(entry.id) === String(componentVariant?.product_id));
+            return { ...item, component_variant: componentVariant, component_product: componentProduct ? { name: componentProduct.name, image_url: componentProduct.image_url } : null };
+          });
+          return {
+            ...product, image: product.image_url, price: Number(base.price || 0), oldPrice: base.old_price ? Number(base.old_price) : null,
+            badge: product.badge || (product.is_bestseller ? "BESTSELLER" : product.is_offer ? "SALE" : ""),
+            featured: product.is_bestseller, product_variants: sorted, bundle_items
+          };
+        });
+      }
+    } catch (_) {}
+  }
   const money = value => `EGP ${value.toLocaleString("en-EG")}`;
   const $ = selector => document.querySelector(selector);
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -8,6 +34,8 @@
   let activeSubFilter = "all";
   let activeSort = "featured";
   let searchQuery = "";
+  let packageAnchorHandled = false;
+  const packageDrag = new WeakMap();
   const findProduct = id => data.products.find(product => String(product.id) === String(id));
   const availableStock = (product, variantId) => {
     const variant = variantsFor(product).find(item => String(item.id) === String(variantId));
@@ -25,7 +53,7 @@
   };
 
   function renderMainFilters() {
-    const catalogProducts = data.products.filter(product => product.badge !== "PACKAGE");
+    const catalogProducts = data.products.filter(product => product.badge !== "PACKAGE" && product.category !== "__package_component__");
     const filters = [{ id: "all", name: "All products", icon: "✦" }, ...data.categories];
     $("[data-main-filters]").innerHTML = filters.map(category => {
       const count = category.id === "all" ? catalogProducts.length : catalogProducts.filter(product => product.category === category.id).length;
@@ -55,14 +83,18 @@
     const variants = variantsFor(product);
     const selected = variants.find(variant => variant.stock !== 0) || variants[0];
     const soldOut = variants.every(variant => variant.stock === 0);
+    const packageItems = product.badge === "PACKAGE" ? (product.bundle_items || []) : [];
+    const packageImages = [product.image, ...packageItems.map(item => item.component_product?.image_url).filter(Boolean)];
+    const saving = product.badge === "PACKAGE" && selected.oldPrice > selected.price ? selected.oldPrice - selected.price : 0;
+    const productMedia = product.badge === "PACKAGE"
+      ? `<div class="product-image package-image-slider" aria-label="Swipe through package photos"><div class="package-image-track">${packageImages.map((image, index) => `<figure><img src="${escapeHtml(image)}" alt="${index ? escapeHtml(packageItems[index - 1]?.component_product?.name || "Package product") : escapeHtml(product.name)}" loading="lazy">${index ? `<figcaption>${escapeHtml(packageItems[index - 1]?.component_product?.name || "Product")}</figcaption>` : ""}</figure>`).join("")}</div><button class="package-slide-arrow previous" type="button" data-package-arrow="-1" aria-label="Previous package photo">‹</button><button class="package-slide-arrow next" type="button" data-package-arrow="1" aria-label="Next package photo">›</button><span class="badge">PACKAGE</span><span class="image-swipe-hint"><b data-slide-current>1</b>/${packageImages.length}</span><div class="package-slider-dots">${packageImages.map((_, index) => `<button type="button" data-package-slide="${index}" class="${index === 0 ? "active" : ""}" aria-label="Show package photo ${index + 1}"></button>`).join("")}</div></div>`
+      : `<div class="product-image"><img src="${product.image}" alt="${product.name}" loading="lazy">${product.badge ? `<span class="badge">${product.badge}</span>` : ""}</div>`;
     return `<article class="product-card">
-      <div class="product-image">
-        <img src="${product.image}" alt="${product.name}" loading="lazy">
-        ${product.badge ? `<span class="badge">${product.badge}</span>` : ""}
-      </div>
+      ${productMedia}
       <div class="product-info"><small>${product.brand}</small><h3>${product.name}</h3>${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ""}${product.badge === "PACKAGE" && product.bundle_items?.length ? `<div class="package-contents"><b>Package includes</b>${product.bundle_items.map(item => `<span>${item.component_product?.image_url ? `<img src="${escapeHtml(item.component_product.image_url)}" alt="">` : ""}<em>${item.quantity}× ${escapeHtml(item.component_product?.name || "Product")} · ${escapeHtml(item.component_variant?.label || "")}</em></span>`).join("")}</div>` : ""}
         <label class="variant-picker"><span>Size</span><select data-variant>${variants.map(variant => `<option value="${variant.id}" data-price="${variant.price}" data-old-price="${variant.oldPrice || ""}" data-stock="${variant.stock ?? ""}"${variant.id === selected.id ? " selected" : ""}${variant.stock === 0 ? " disabled" : ""}>${variant.label}${variant.stock === 0 ? " — Sold out" : ""}</option>`).join("")}</select></label>
         <div class="price"><b>${money(selected.price)}</b><s${selected.oldPrice ? "" : " hidden"}>${selected.oldPrice ? money(selected.oldPrice) : ""}</s></div>
+        ${saving ? `<div class="package-saving">Save ${money(saving)} with this routine</div>` : ""}
         <div class="card-quantity"><span>Quantity</span><div><button type="button" data-card-quantity="minus" aria-label="Reduce quantity">−</button><b data-card-quantity-value>1</b><button type="button" data-card-quantity="plus" aria-label="Increase quantity">+</button></div></div>
         <div class="product-actions"><button class="button button-secondary add-cart" data-add="${product.id}" type="button"${soldOut ? " disabled" : ""}>${soldOut ? "Sold out" : "Add to bag"}</button><button class="button button-primary buy-now" data-buy-now="${product.id}" type="button"${soldOut ? " disabled" : ""}>Buy now</button></div>
       </div>
@@ -77,8 +109,17 @@
     </article>`;
   }
 
+  function showPackageSlide(slider, requestedIndex, pauseAutoplay = true) {
+    const track = slider?.querySelector(".package-image-track");
+    const slides = track?.querySelectorAll("figure") || [];
+    if (!track || !slides.length) return;
+    const index = (requestedIndex + slides.length) % slides.length;
+    if (pauseAutoplay) slider.dataset.pausedUntil = String(Date.now() + 7000);
+    track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" });
+  }
+
   function renderShelves() {
-    const regularProducts = data.products.filter(product => product.badge !== "PACKAGE");
+    const regularProducts = data.products.filter(product => product.badge !== "PACKAGE" && product.category !== "__package_component__");
     const bestsellers = regularProducts.filter(product => ["BESTSELLER", "LOVED", "SUMMER PICK", "ROUTINE"].includes(product.badge)).slice(0, 5);
     const offers = regularProducts.filter(product => product.oldPrice).slice(0, 5);
     const loop = products => {
@@ -94,10 +135,14 @@
     const section = $("[data-package-section]");
     section.hidden = packages.length === 0;
     $("[data-package-grid]").innerHTML = packages.map(productCard).join("");
+    if (packages.length && location.hash === "#packages" && !packageAnchorHandled) {
+      packageAnchorHandled = true;
+      requestAnimationFrame(() => section.scrollIntoView({ block: "start" }));
+    }
   }
 
   function renderProducts() {
-    const regularProducts = data.products.filter(product => product.badge !== "PACKAGE");
+    const regularProducts = data.products.filter(product => product.badge !== "PACKAGE" && product.category !== "__package_component__");
     let list = activeFilter === "all" ? [...regularProducts] : regularProducts.filter(p => p.category === activeFilter);
     if (activeSubFilter !== "all") list = list.filter(product => product.subcategory === activeSubFilter);
     if (searchQuery) {
@@ -168,9 +213,20 @@
     const remove = event.target.closest("[data-remove-key]");
     const quantity = event.target.closest("[data-quantity]");
     const cardQuantity = event.target.closest("[data-card-quantity]");
+    const packageSlide = event.target.closest("[data-package-slide]");
+    const packageArrow = event.target.closest("[data-package-arrow]");
     const shelfView = event.target.closest("[data-shelf-view]");
     const productFocus = event.target.closest("[data-product-focus]");
     const shortcut = event.target.closest("[data-shortcut]");
+    if (packageSlide) {
+      const slider = packageSlide.closest(".package-image-slider");
+      showPackageSlide(slider, Number(packageSlide.dataset.packageSlide));
+    }
+    if (packageArrow) {
+      const slider = packageArrow.closest(".package-image-slider");
+      const current = Number(slider.querySelector("[data-slide-current]")?.textContent || 1) - 1;
+      showPackageSlide(slider, current + Number(packageArrow.dataset.packageArrow));
+    }
     if (category) {
       applyFilter(category.dataset.category);
       $("#products").scrollIntoView({ behavior: "smooth" });
@@ -290,6 +346,55 @@
       $("[data-mobile-filter-toggle]").setAttribute("aria-expanded", String(open));
     }
   });
+
+  document.addEventListener("scroll", event => {
+    const track = event.target.closest?.(".package-image-track");
+    if (!track || !track.clientWidth) return;
+    const slider = track.closest(".package-image-slider");
+    const active = Math.round(track.scrollLeft / track.clientWidth);
+    slider.querySelectorAll("[data-package-slide]").forEach((dot, index) => dot.classList.toggle("active", index === active));
+    const counter = slider.querySelector("[data-slide-current]");
+    if (counter) counter.textContent = String(active + 1);
+  }, true);
+
+  document.addEventListener("pointerdown", event => {
+    const track = event.target.closest(".package-image-track");
+    if (!track || event.button > 0) return;
+    packageDrag.set(track, { pointerId: event.pointerId, startX: event.clientX, startLeft: track.scrollLeft });
+    track.closest(".package-image-slider").dataset.pausedUntil = String(Date.now() + 7000);
+    track.setPointerCapture?.(event.pointerId);
+    track.classList.add("dragging");
+  });
+  document.addEventListener("pointermove", event => {
+    const track = event.target.closest(".package-image-track");
+    const drag = track && packageDrag.get(track);
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const distance = event.clientX - drag.startX;
+    if (Math.abs(distance) < 3) return;
+    if (event.cancelable) event.preventDefault();
+    track.scrollLeft = drag.startLeft - distance;
+  }, { passive: false });
+  const finishPackageDrag = event => {
+    const track = event.target.closest?.(".package-image-track");
+    const drag = track && packageDrag.get(track);
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const slide = Math.round(track.scrollLeft / track.clientWidth);
+    track.classList.remove("dragging");
+    packageDrag.delete(track);
+    track.releasePointerCapture?.(event.pointerId);
+    track.scrollTo({ left: slide * track.clientWidth, behavior: "smooth" });
+  };
+  document.addEventListener("pointerup", finishPackageDrag);
+  document.addEventListener("pointercancel", finishPackageDrag);
+
+  setInterval(() => {
+    if (document.hidden) return;
+    document.querySelectorAll(".package-image-slider").forEach(slider => {
+      if (Number(slider.dataset.pausedUntil || 0) > Date.now() || slider.matches(":hover")) return;
+      const current = Number(slider.querySelector("[data-slide-current]")?.textContent || 1) - 1;
+      showPackageSlide(slider, current + 1, false);
+    });
+  }, 3200);
 
   document.addEventListener("keydown", event => {
     if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-product-focus]")) {

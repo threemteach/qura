@@ -9,7 +9,8 @@
     { id: "lip", label: "Lip care", subcategories: [] }, { id: "nail", label: "Nail care", subcategories: [] }
   ];
   const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag"];
-  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, newProductUploads: 0, loadedOnce: false, packageMode: false };
+  const LOCAL_DEMO = ["localhost", "127.0.0.1"].includes(location.hostname);
+  const state = { token: sessionStorage.getItem("curaAdminToken") || "", products: [], orders: [], settings: {}, deliveryHistory: [], uploadingImage: false, newProductUploads: 0, loadedOnce: false, packageMode: false, editingVariantIds: [], editingProductId: null };
   const cropState = { objectUrl: "", image: null, baseScale: 1, zoom: 1, x: 0, y: 0, dragging: false, pointerX: 0, pointerY: 0, startX: 0, startY: 0 };
   const $ = selector => document.querySelector(selector);
   const money = value => `EGP ${Number(value || 0).toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
@@ -19,7 +20,95 @@
     $(".toast").classList.add("show");
     setTimeout(() => $(".toast").classList.remove("show"), 2200);
   };
+  function demoStore() {
+    const saved = localStorage.getItem("curaAdminDemoV3");
+    if (saved) return JSON.parse(saved);
+    const source = window.CURA_DATA || { products: [], categories: [] };
+    const products = source.products.slice(0, 8).map((item, index) => ({
+      id: "demo-product-" + (index + 1), name: item.name, brand: item.brand, category: item.category,
+      subcategory: item.subcategory || "", description: "Demo product — saved only on this device.",
+      image_url: item.image, is_active: true, is_bestseller: item.badge === "BESTSELLER", is_offer: Boolean(item.oldPrice),
+      badge: item.badge === "BESTSELLER" ? "BESTSELLER" : null, sort_order: index,
+      product_variants: [{ id: "demo-variant-" + (index + 1), product_id: "demo-product-" + (index + 1), label: "Default size", price: item.price, old_price: item.oldPrice || null, stock: 10, sort_order: 0 }]
+    }));
+    const packageId = "demo-routine-package";
+    products.push({
+      id: packageId, name: "Glow & Repair Routine", brand: "Cura Care", category: "__package__", subcategory: "",
+      description: "A complete demo routine with cleanser, serum and moisturizer.", image_url: products[1]?.image_url || "assets/images/cura-care-logo.png",
+      is_active: true, is_bestseller: true, is_offer: true, badge: "PACKAGE", sort_order: 100,
+      product_variants: [{ id: "demo-package-variant", label: "Complete routine", price: 1650, old_price: 1900, stock: 4, sort_order: 0 }]
+    });
+    const db = {
+      products, orders: [], deliveryHistory: [],
+      bundleItems: products.slice(0, 3).map((product, index) => ({ bundle_product_id: packageId, component_variant_id: product.product_variants[0].id, quantity: 1, sort_order: index })),
+      settings: { catalog_categories: source.categories.map(item => ({ id: item.id, name: item.name, label: item.name, subcategories: item.subs || [] })), delivery_rates: [], delivery_fee: 60, free_delivery_from: 1000 }
+    };
+    localStorage.setItem("curaAdminDemoV3", JSON.stringify(db));
+    return db;
+  }
+  function saveDemo(db) { localStorage.setItem("curaAdminDemoV3", JSON.stringify(db)); }
+  async function demoApi(url, options = {}) {
+    const db = demoStore();
+    const method = options.method || "GET";
+    const payload = options.body ? JSON.parse(options.body) : {};
+    if (url.startsWith("/api/auth")) return { user: { email: "local-demo@curacare.com" } };
+    if (url.startsWith("/api/product-image")) return { url: payload.dataUrl };
+    if (url.includes("action=dashboard")) return structuredClone(db);
+    if (url.includes("action=product-status") && method === "PATCH") {
+      const product = db.products.find(item => item.id === payload.id);
+      if (!product) throw new Error("Product not found");
+      product.is_active = Boolean(payload.is_active);
+      saveDemo(db);
+      return { ok: true };
+    }
+    if (url.includes("action=product") && ["POST", "PATCH"].includes(method)) {
+      const incoming = payload.product;
+      const id = incoming.id || "demo-product-" + crypto.randomUUID();
+      const makeVariants = (variants, productId) => variants.map((variant, index) => ({ ...variant, id: variant.id || "demo-variant-" + crypto.randomUUID(), product_id: productId, sort_order: index }));
+      const createdLinks = [];
+      (incoming.newProducts || []).forEach((item, index) => {
+        const productId = "demo-product-" + crypto.randomUUID();
+        const variants = makeVariants([item.variant], productId);
+        db.products.push({ ...item, variant: undefined, quantity: undefined, id: productId, slug: slugify(item.name), image_url: item.image_url || "assets/images/cura-care-logo.png", is_active: true, is_bestseller: false, is_offer: false, sort_order: db.products.length + index, product_variants: variants });
+        createdLinks.push({ variant_id: variants[0].id, quantity: item.quantity });
+      });
+      const clean = { ...incoming };
+      delete clean.variants; delete clean.bundleItems; delete clean.newProducts; delete clean.removedVariantIds;
+      const record = { ...clean, id, product_variants: makeVariants(incoming.variants || [], id) };
+      const existingIndex = db.products.findIndex(item => item.id === id);
+      if (existingIndex >= 0) db.products[existingIndex] = record; else db.products.push(record);
+      if (record.badge === "PACKAGE") {
+        db.bundleItems = db.bundleItems.filter(item => item.bundle_product_id !== id);
+        [...(incoming.bundleItems || []), ...createdLinks].forEach((item, index) => db.bundleItems.push({ bundle_product_id: id, component_variant_id: item.variant_id, quantity: item.quantity, sort_order: index }));
+      }
+      saveDemo(db);
+      return { product: record, ok: true };
+    }
+    if (new URL(url, location.origin).searchParams.get("action") === "product" && method === "DELETE") {
+      const id = new URL(url, location.origin).searchParams.get("id");
+      const product = db.products.find(item => item.id === id);
+      if (product) product.is_active = false;
+      saveDemo(db); return { ok: true };
+    }
+    if (url.includes("action=product-permanent") && method === "DELETE") {
+      const id = new URL(url, location.origin).searchParams.get("id");
+      const product = db.products.find(item => item.id === id);
+      if (!product) throw new Error("Product not found");
+      if (product.is_active) throw new Error("Archive the product first");
+      const variantIds = new Set((product.product_variants || []).map(variant => variant.id));
+      if (db.bundleItems.some(item => variantIds.has(item.component_variant_id))) throw new Error("This product is used inside a package. Remove it from the package first.");
+      db.products = db.products.filter(item => item.id !== id);
+      db.bundleItems = db.bundleItems.filter(item => item.bundle_product_id !== id);
+      saveDemo(db); return { ok: true, deleted: true };
+    }
+    if (url.includes("action=settings")) {
+      Object.assign(db.settings, payload.settings || {});
+      saveDemo(db); return { ok: true };
+    }
+    return { ok: true };
+  }
   const api = async (url, options = {}) => {
+    if (LOCAL_DEMO) return demoApi(url, options);
     const response = await fetch(url, {
       ...options,
       headers: { "Content-Type": "application/json", ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}), ...options.headers }
@@ -67,7 +156,7 @@
 
   function renderProducts(query = "") {
     const normalized = query.trim().toLowerCase();
-    const list = state.products.filter(product => product.badge !== "PACKAGE" && `${product.name} ${product.brand} ${product.category}`.toLowerCase().includes(normalized));
+    const list = state.products.filter(product => product.badge !== "PACKAGE" && product.category !== "__package_component__" && `${product.name} ${product.brand} ${product.category}`.toLowerCase().includes(normalized));
     $("[data-product-count]").textContent = `${list.length} product${list.length === 1 ? "" : "s"}`;
     $("[data-products-table]").innerHTML = list.map(product => `
       <tr>
@@ -76,7 +165,7 @@
         <td data-label="Placement">${product.is_bestseller ? '<span class="tag">Best seller</span>' : ""}${product.is_offer ? '<span class="tag">Offer</span>' : ""}</td>
         <td data-label="Prices">${product.product_variants?.map(variant => `<span class="tag">${variantPriceMarkup(variant)}</span>`).join("") || "No sizes"}</td>
         <td data-label="Status">${product.is_active ? "Active" : "Hidden"}</td>
-        <td class="row-actions"><button data-edit-product="${product.id}">Edit</button><button data-delete-product="${product.id}">Delete</button></td>
+        <td class="row-actions"><button data-edit-product="${product.id}">Edit</button>${product.is_active ? `<button data-archive-product="${product.id}">Archive</button>` : `<button data-restore-product="${product.id}">Restore</button><button class="danger-action" data-delete-product="${product.id}" data-product-name="${escapeHtml(product.name)}">Delete permanently</button>`}</td>
       </tr>`).join("");
   }
 
@@ -87,7 +176,7 @@
         <td><img src="${escapeHtml(product.image_url || "assets/images/cura-care-logo.png")}" alt=""> <span><b>${escapeHtml(product.name)}</b><small>${escapeHtml(product.description || "Complete routine package")}</small></span></td>
         <td data-label="Price">${product.product_variants?.map(variant => `<span class="tag">${variantPriceMarkup(variant)}</span>`).join("") || "No price"}</td>
         <td data-label="Status">${product.is_active ? "Active" : "Hidden"}</td>
-        <td class="row-actions"><button data-edit-package="${product.id}">Edit</button><button data-delete-product="${product.id}">Delete</button></td>
+        <td class="row-actions"><button data-edit-package="${product.id}">Edit</button>${product.is_active ? `<button data-archive-product="${product.id}">Archive</button>` : `<button data-restore-product="${product.id}">Restore</button><button class="danger-action" data-delete-product="${product.id}" data-product-name="${escapeHtml(product.name)}">Delete permanently</button>`}</td>
       </tr>`).join("") || '<tr><td colspan="4">No routine packages yet.</td></tr>';
   }
 
@@ -107,8 +196,6 @@
 
   function addNewPackageProduct(values = {}) {
     const row = $("[data-package-product-template]").content.firstElementChild.cloneNode(true);
-    const category = row.querySelector('[data-np="category"]');
-    category.innerHTML = '<option value="">Choose category</option>' + categories().map(item => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join("");
     Object.entries(values).forEach(([key, value]) => {
       const field = row.querySelector(`[data-np="${key}"]`);
       if (field) field.value = value ?? "";
@@ -120,17 +207,19 @@
     return [...document.querySelectorAll("[data-package-new-products] .package-new-product")].map(row => {
       const value = key => row.querySelector(`[data-np="${key}"]`)?.value.trim() || "";
       return {
-        name: value("name"), brand: value("brand"), category: value("category"), subcategory: value("subcategory"),
+        name: value("name"), brand: "Cura Care", category: "__package_component__", subcategory: "",
         description: value("description"), image_url: value("image_url"), quantity: Math.max(1, Number(value("quantity") || 1)),
-        variant: { label: value("label"), price: Number(value("price")), old_price: null, stock: Math.max(0, Number(value("stock") || 0)) }
+        variant: { label: value("label"), price: 0, old_price: null, stock: Math.max(0, Number(value("stock") || 0)) }
       };
     });
   }
 
   async function compressAndUploadNewProductImage(file, row) {
     const status = row.querySelector("[data-new-product-image-status]");
+    const preview = row.querySelector("[data-new-product-image-preview]");
     state.newProductUploads++;
     status.textContent = "Compressing and uploading...";
+    preview.src = URL.createObjectURL(file);
     try {
       const bitmap = await createImageBitmap(file);
       const size = 1000;
@@ -145,6 +234,7 @@
       const dataUrl = canvas.toDataURL("image/webp", .82);
       const result = await api("/api/product-image", { method: "POST", body: JSON.stringify({ dataUrl }) });
       row.querySelector('[data-np="image_url"]').value = result.url;
+      preview.src = result.url;
       status.textContent = "Photo uploaded";
     } catch (error) {
       status.textContent = error.message || "Photo upload failed";
@@ -314,13 +404,20 @@
   function openProduct(product, packageMode = false) {
     const form = $("[data-product-form]");
     form.reset();
+    state.editingProductId = product?.id || null;
+    form.elements.id.value = state.editingProductId || "";
     state.packageMode = packageMode || product?.badge === "PACKAGE";
+    state.editingVariantIds = (product?.product_variants || []).map(variant => variant.id).filter(Boolean);
     $("[data-editor-eyebrow]").textContent = state.packageMode ? "PACKAGE EDITOR" : "PRODUCT EDITOR";
     $("[data-editor-title]").textContent = state.packageMode ? "Routine package details" : "Product details";
     $("[data-package-components-section]").hidden = !state.packageMode;
     $("[data-category-field]").hidden = state.packageMode;
     $("[data-subcategory-field]").hidden = state.packageMode;
     $("[data-product-category]").required = !state.packageMode;
+    $("[data-price-title]").textContent = state.packageMode ? "Full package price" : "Sizes, price & offer";
+    $("[data-price-help]").textContent = state.packageMode ? "Set one price for the complete routine. Individual product prices are not added to this amount." : "Enter the original price and discount. The final price is calculated for you.";
+    $("[data-add-variant]").hidden = state.packageMode;
+    form.querySelector(".save-product").textContent = state.packageMode ? "Save package" : "Save product";
     state.uploadingImage = false;
     $("[data-product-error]").textContent = "";
     $("[data-variant-rows]").innerHTML = "";
@@ -331,7 +428,15 @@
     });
     $("[data-product-image-preview]").src = product?.image_url || "assets/images/cura-care-logo.png";
     $("[data-image-upload-status]").textContent = product?.image_url ? "Current product image" : "Choose an image from your phone";
-    (product?.product_variants?.length ? product.product_variants : [state.packageMode ? { label: "Complete routine" } : {}]).forEach(addVariant);
+    (product?.product_variants?.length ? (state.packageMode ? product.product_variants.slice(0, 1) : product.product_variants) : [state.packageMode ? { label: "Complete package" } : {}]).forEach(addVariant);
+    if (state.packageMode) {
+      const packageRow = $("[data-variant-rows] .variant-row");
+      packageRow.querySelector(".variant-title strong").textContent = "Complete package";
+      packageRow.querySelector('[data-v="label"]').closest("label").hidden = true;
+      packageRow.querySelector("[data-remove-variant]").hidden = true;
+      packageRow.querySelector("[data-original-price]").closest("label").childNodes[0].textContent = "Full package price before offer";
+      packageRow.querySelector("[data-final-price]").closest("label").childNodes[0].textContent = "Final package price";
+    }
     $("[data-package-new-products]").innerHTML = "";
     if (state.packageMode) {
       renderPackageComponents(product?.id || null);
@@ -343,12 +448,13 @@
   function collectVariants() {
     return [...document.querySelectorAll(".variant-row")].map(row => {
       const { original, discount, finalPrice } = calculateVariant(row);
+      const stockValue = row.querySelector('[data-v="stock"]').value;
       return {
         id: row.querySelector('[data-v="id"]').value || undefined,
         label: row.querySelector('[data-v="label"]').value.trim(),
         price: finalPrice,
         old_price: discount > 0 ? original : null,
-        stock: Math.max(0, Number(row.querySelector('[data-v="stock"]').value || 0))
+        stock: Math.max(0, Number(stockValue === "" ? 1 : stockValue))
       };
     });
   }
@@ -382,10 +488,33 @@
     if (edit) openProduct(state.products.find(product => product.id === edit.dataset.editProduct));
     const editPackage = event.target.closest("[data-edit-package]");
     if (editPackage) openProduct(state.products.find(product => product.id === editPackage.dataset.editPackage), true);
-    const remove = event.target.closest("[data-delete-product]");
-    if (remove && confirm("Delete this product?")) {
-      await api(`/api/admin?action=product&id=${remove.dataset.deleteProduct}`, { method: "DELETE" });
+    const archive = event.target.closest("[data-archive-product]");
+    if (archive && confirm("Archive this product? It can be restored later and no data will be deleted.")) {
+      await api("/api/admin?action=product-status", { method: "PATCH", body: JSON.stringify({ id: archive.dataset.archiveProduct, is_active: false }) });
+      toast("Product archived safely");
       await load();
+    }
+    const restore = event.target.closest("[data-restore-product]");
+    if (restore) {
+      await api("/api/admin?action=product-status", { method: "PATCH", body: JSON.stringify({ id: restore.dataset.restoreProduct, is_active: true }) });
+      toast("Product restored");
+      await load();
+    }
+    const permanentDelete = event.target.closest("[data-delete-product]");
+    if (permanentDelete) {
+      const productName = permanentDelete.dataset.productName;
+      const typedName = prompt(`This permanently deletes the product and its uploaded image.\n\nType the product name to confirm:\n${productName}`);
+      if (typedName === null) return;
+      if (typedName.trim() !== productName.trim()) return toast("Product name did not match — nothing was deleted");
+      permanentDelete.disabled = true;
+      try {
+        await api(`/api/admin?action=product-permanent&id=${encodeURIComponent(permanentDelete.dataset.deleteProduct)}`, { method: "DELETE" });
+        toast("Product and unused image deleted permanently");
+        await load();
+      } catch (error) {
+        toast(error.message);
+        permanentDelete.disabled = false;
+      }
     }
     if (event.target.closest("[data-add-variant]")) addVariant({});
     if (event.target.closest("[data-add-package-product]")) addNewPackageProduct();
@@ -555,6 +684,8 @@
     }
     const raw = Object.fromEntries(new FormData(form));
     const variants = collectVariants();
+    const currentVariantIds = new Set(variants.map(variant => variant.id).filter(Boolean));
+    const removedVariantIds = state.editingVariantIds.filter(id => !currentVariantIds.has(id));
     const newProducts = state.packageMode ? collectNewPackageProducts() : [];
     const bundleItems = [...document.querySelectorAll("[data-component-variant]:checked")].map(input => ({
       variant_id: input.dataset.componentVariant,
@@ -565,8 +696,8 @@
       $("[data-product-error]").textContent = "Add a size and a valid original price.";
       return;
     }
-    if (newProducts.some(item => !item.name || !item.brand || !item.category || !item.variant.label || item.variant.price <= 0)) {
-      $("[data-product-error]").textContent = "Complete the name, brand, category, size and standalone price for every new product.";
+    if (newProducts.some(item => !item.name || !item.variant.label)) {
+      $("[data-product-error]").textContent = "Complete the name and size for every package item.";
       return;
     }
     if (state.packageMode && new Set(bundleItems.map(item => item.product_id)).size + newProducts.length < 2) {
@@ -575,7 +706,7 @@
     }
     const product = {
       ...raw,
-      id: raw.id || undefined,
+      id: state.editingProductId || undefined,
       slug: raw.slug.trim() || slugify(raw.name),
       is_active: form.is_active.checked,
       is_bestseller: form.is_bestseller.checked,
@@ -585,15 +716,22 @@
       subcategory: state.packageMode ? "" : raw.subcategory,
       bundleItems: state.packageMode ? bundleItems : undefined,
       newProducts: state.packageMode ? newProducts : undefined,
+      removedVariantIds,
       variants
     };
+    const saveButton = form.querySelector(".save-product");
     try {
-      await api("/api/admin?action=product", { method: raw.id ? "PATCH" : "POST", body: JSON.stringify({ product }) });
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving safely...";
+      await api("/api/admin?action=product", { method: state.editingProductId ? "PATCH" : "POST", body: JSON.stringify({ product }) });
       $("[data-product-dialog]").close();
       toast("Product saved");
       await load();
     } catch (error) {
       $("[data-product-error]").textContent = error.message;
+    } finally {
+      saveButton.disabled = false;
+      saveButton.textContent = state.packageMode ? "Save package" : "Save product";
     }
   });
 
@@ -620,11 +758,19 @@
     }
   });
 
-  if (state.token) api("/api/auth").then(data => {
+  if (LOCAL_DEMO) {
+    state.token = "local-demo";
+    $("[data-admin-user]").textContent = "Local demo";
+    $("[data-admin-login]").hidden = true;
+    $("[data-admin-app]").hidden = false;
+    load().then(() => openProduct(null, true));
+  } else if (state.token) api("/api/auth").then(data => {
     $("[data-admin-user]").textContent = data.user.email;
     $("[data-admin-login]").hidden = true;
     $("[data-admin-app]").hidden = false;
     load();
   }).catch(() => sessionStorage.clear());
-  setInterval(() => { if (state.token && !$("[data-admin-app]").hidden) load().catch(() => {}); }, 30000);
+  setInterval(() => {
+    if (state.token && !$("[data-admin-app]").hidden && !$("[data-product-dialog]").open && !$("[data-crop-dialog]").open) load().catch(() => {});
+  }, 30000);
 })();
